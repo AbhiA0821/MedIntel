@@ -13,3 +13,4 @@ con.execute(sql)
 print("Sample data inserted successfully!")
 
 con.close()
+
