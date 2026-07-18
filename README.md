@@ -1,74 +1,114 @@
-# MedIntel
 
-## Intelligent Healthcare Data Engineering Platform
 
-MedIntel is an end-to-end healthcare data engineering project that simulates patient monitoring using modern data engineering technologies. The project focuses on building a scalable ETL pipeline, storing healthcare data efficiently, performing analytics, and visualizing patient information through a web dashboard.
+# 🏥 MedIntel
 
-## Tech Stack
+## AI-Powered Healthcare Data Pipeline
+
+MedIntel is an AI-powered Healthcare Data Pipeline designed to automate patient health data processing, monitoring, and analysis using modern Data Engineering and AI technologies.
+
+The project focuses on building a scalable healthcare monitoring system capable of processing patient vital signs, detecting abnormal health conditions, classifying severity, generating recommendations, and providing intelligent alerts.
+
+---
+
+## 🚀 Tech Stack
 
 - Python 3.12
 - DuckDB
-- PySpark
-- Apache Airflow
-- Flask
-- Pandas
-- Docker (Planned)
+- SQL
+- PySpark *(Planned)*
+- Apache Airflow *(Planned)*
+- Streamlit *(Planned)*
+- LLM Integration *(Planned)*
+- Docker *(Planned)*
 - Git & GitHub
 
-## Current Progress
+---
 
-### Completed
-- Project setup
-- Virtual environment using uv
-- DuckDB integration
-- Patients table
-- VitalSigns table
-- Sample patient dataset
-- Sample vital signs dataset
-- SQL queries
-  - SELECT
-  - WHERE
-  - GROUP BY
+## ✅ Current Progress
 
-### In Progress
-- SQL JOIN
-- Healthcare analytics queries
+### Backend Completed
 
-### Planned
-- Alerts module
-- PySpark ETL pipeline
-- Apache Airflow automation
-- Flask dashboard
-- Patient vital sign simulator
-- Rule-based recommendations
-- Docker deployment
+- DuckDB Database Design
+- Patient & Vital Signs Database
+- Healthcare SQL Queries
+- Patient Monitoring Module
+- Reason Detection Engine
+- Severity Classification Engine
+- Recommendation Engine
+- Alert Engine
 
-## Project Structure
+---
+
+## 📌 Upcoming Features
+
+- Streamlit Dashboard
+- PySpark ETL Pipeline
+- Apache Airflow Workflow Automation
+- LLM-powered Healthcare Insights
+- Docker Deployment
+
+---
+
+## 📂 Project Structure
 
 ```text
 MedIntel/
 │
-├── database/
+├── airflow/
 ├── backend/
-├── pyspark/
-├── simulator/
+├── database/
 ├── docker/
 ├── docs/
+├── pyspark/
+├── reports/
+├── services/
+├── simulator/
 ├── tests/
+│
 ├── app.py
+├── requirements.txt
 ├── README.md
 └── pyproject.toml
 ```
 
-## Project Goal
+---
 
-To build a real-world healthcare analytics platform that demonstrates:
+## 🎯 Project Objectives
+
+- Build an automated healthcare data pipeline
+- Process healthcare data using DuckDB and PySpark
+- Automate workflows using Apache Airflow
+- Monitor patient vital signs
+- Detect abnormal health conditions
+- Generate intelligent recommendations
+- Provide real-time alerts
+- Integrate AI-powered healthcare insights using LLMs
+
+---
+
+## 🛠️ Roadmap
+
+- ✅ Backend Architecture
+- 🔄 Streamlit Dashboard
+- ⏳ PySpark Integration
+- ⏳ Apache Airflow Automation
+- ⏳ LLM Integration
+- ⏳ Docker Deployment
+
+---
+
+## 📖 Learning Outcomes
+
+This project is helping me strengthen my knowledge in:
 
 - Data Engineering
-- SQL
-- ETL Pipelines
 - Healthcare Analytics
-- Dashboard Development
-- Python Development
+- SQL & DuckDB
+- Python Backend Development
+- ETL Pipelines
+- Workflow Automation
+- AI Engineering
 
-This project is being developed as a learning journey while preparing for AI Engineering and Data Engineering roles.
+---
+
+⭐ This project is actively under development. Follow the repository for future updates.
