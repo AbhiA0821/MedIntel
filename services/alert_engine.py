@@ -56,3 +56,4 @@ if __name__ == "__main__":
     print(f"Alert Color   : {alert['alert_color']}")
     print(f"Alert Icon    : {alert['alert_icon']}")
     print(f"Message       : {alert['alert_message']}")       
+    

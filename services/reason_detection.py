@@ -1,10 +1,10 @@
 def get_patient_reasons(patient):
     reasons = []
 
-    heart_rate = patient["heart_rate"]
-    spo2 = patient["spo2"]
-    temperature = patient["temperature"]
-    systolic_bp = patient["systolic_bp"]
+    heart_rate = patient[3]
+    spo2 = patient[4]
+    temperature = patient[5]
+    systolic_bp = patient[6]
 
     if spo2 < 92:
         reasons.append("Low Oxygen")

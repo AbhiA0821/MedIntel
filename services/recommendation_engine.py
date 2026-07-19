@@ -190,14 +190,15 @@ def get_recommendations(patient):
 if __name__ == "__main__":
 
     patient = (
-        1,
-        "Rahul Sharma",
-        130,
-        84,
-        39.2,
-        170,
-        105
-    )
+    1,
+    "Rahul",
+    "Sharma",
+    130,
+    84,
+    39.2,
+    170,
+    105
+)
 
     print("=" * 60)
     print("MEDINTEL - RECOMMENDATION ENGINE")

@@ -22,6 +22,4 @@ def get_critical_patients():
         OR v.systolic_bp > 140;
     """
 
-    df = con.execute(query).fetchdf()
-
-    return df.to_dict("records")
+    return con.execute(query).fetchall()
