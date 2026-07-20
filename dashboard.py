@@ -2,51 +2,58 @@ import streamlit as st
 
 from database.monitoring_queries import get_critical_patients
 from services.reason_detection import get_patient_reasons
+from services.severity_engine import classify_severity
+from services.recommendation_engine import generate_recommendation
 
 
-# Page configuration
+# -------------------------------
+# Page Configuration
+# -------------------------------
 st.set_page_config(
     page_title="MedIntel",
     page_icon="🏥",
     layout="wide"
 )
 
-# Dashboard title
+# -------------------------------
+# Dashboard Title
+# -------------------------------
 st.title("🏥 MedIntel")
 st.subheader("AI Healthcare Patient Monitoring Dashboard")
 
 st.markdown("---")
 
-st.subheader("🚨 Critical Patient Details")
+# -------------------------------
+# Get Patient Data
+# -------------------------------
+patients = get_critical_patients()
 
-patients=get_critical_patients()
-
-
-# Create four columns
+# -------------------------------
+# Summary Metrics
+# -------------------------------
 col1, col2, col3, col4 = st.columns(4)
 
-# Count patients
 total_patients = len(patients)
 critical = 0
 moderate = 0
 low = 0
 
-# Calculate severity counts
-from services.severity_engine import classify_severity
-
 for patient in patients:
+
     severity = classify_severity(patient)
 
     if severity == "Critical":
         critical += 1
+
     elif severity == "Moderate":
         moderate += 1
+
     else:
         low += 1
 
-# Display metrics
+
 with col1:
-    st.metric("👨 Total Patients", total_patients)
+    st.metric("👨 Monitored Patients", total_patients)
 
 with col2:
     st.metric("🔴 Critical", critical)
@@ -58,7 +65,11 @@ with col4:
     st.metric("🟢 Low Risk", low)
 
 
-from services.reason_detection import get_patient_reasons
+# -------------------------------
+# Critical Patient Table
+# -------------------------------
+st.markdown("---")
+st.subheader("🚨 Critical Patient Details")
 
 table_data = []
 
@@ -82,4 +93,20 @@ st.dataframe(
     table_data,
     use_container_width=True,
     hide_index=True
-)    
+)
+
+
+# -------------------------------
+# AI Recommendations
+# -------------------------------
+st.markdown("---")
+st.subheader("📋 AI Recommendations")
+
+for patient in patients:
+
+    recommendation = generate_recommendation(patient)
+
+    st.info(
+        f"**{patient[1]} {patient[2]}**\n\n"
+        f"{recommendation}"
+    )
