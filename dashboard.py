@@ -5,7 +5,6 @@ from services.reason_detection import get_patient_reasons
 from services.severity_engine import classify_severity
 from services.recommendation_engine import get_recommendations
 
-
 # -------------------------------------------------
 # Page Configuration
 # -------------------------------------------------
@@ -46,13 +45,10 @@ for patient in patients:
 
     if severity == "Critical":
         critical += 1
-
     elif severity == "Moderate":
         moderate += 1
-
     else:
         low += 1
-
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -69,69 +65,95 @@ with col4:
     st.metric("🟢 Low Risk", low)
 
 # -------------------------------------------------
-# Patient Details
+# Critical Patient Cards
 # -------------------------------------------------
 
 st.markdown("---")
-st.subheader("🚨 Critical Patient Details")
+st.subheader("🚨 Critical Patients")
 
-table_data = []
-
-for patient in patients:
-
-    table_data.append(
-        {
-            "Patient ID": patient[0],
-            "Patient Name": f"{patient[1]} {patient[2]}",
-            "Heart Rate": patient[3],
-            "SpO₂": patient[4],
-            "Temperature": patient[5],
-            "Blood Pressure": f"{patient[6]}/{patient[7]}",
-            "Severity": classify_severity(patient),
-            "Problems": ", ".join(get_patient_reasons(patient))
-        }
-    )
-
-st.dataframe(
-    table_data,
-    use_container_width=True,
-    hide_index=True
-)
-
-# -------------------------------------------------
-# AI Recommendations
-# -------------------------------------------------
-
-st.markdown("---")
-st.subheader("📋 AI Recommendations")
+if "selected_patient" not in st.session_state:
+    st.session_state.selected_patient = None
 
 for patient in patients:
 
     severity = classify_severity(patient)
+
+    with st.container(border=True):
+
+        left, right = st.columns([5, 1])
+
+        with left:
+
+            st.markdown(f"### 👤 {patient[1]} {patient[2]}")
+
+            st.write(f"❤️ Heart Rate : {patient[3]}")
+            st.write(f"🫁 SpO₂ : {patient[4]}")
+            st.write(f"🌡 Temperature : {patient[5]}")
+            st.write(f"🩸 Blood Pressure : {patient[6]}/{patient[7]}")
+
+            if severity == "Critical":
+                st.error("🔴 Critical")
+
+            elif severity == "Moderate":
+                st.warning("🟠 Moderate")
+
+            else:
+                st.success("🟢 Low")
+
+        with right:
+
+            st.write("")
+
+            if st.button("View Details", key=f"btn_{patient[0]}"):
+                st.session_state.selected_patient = patient
+
+# -------------------------------------------------
+# Selected Patient Details
+# -------------------------------------------------
+
+if st.session_state.selected_patient:
+
+    patient = st.session_state.selected_patient
+
     reasons = get_patient_reasons(patient)
     recommendations = get_recommendations(patient)
+    severity = classify_severity(patient)
 
-    with st.container():
+    st.markdown("---")
+    st.header("👤 Patient Details")
 
-        st.markdown(f"## 👤 {patient[1]} {patient[2]}")
+    st.subheader(f"{patient[1]} {patient[2]}")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+
+        st.write("### ❤️ Vital Signs")
+
+        st.write(f"Heart Rate : {patient[3]}")
+        st.write(f"SpO₂ : {patient[4]}")
+        st.write(f"Temperature : {patient[5]}")
+        st.write(f"Blood Pressure : {patient[6]}/{patient[7]}")
+
+    with c2:
+
+        st.write("### 🚦 Severity")
 
         if severity == "Critical":
-            st.error(f"🔴 Severity : {severity}")
+            st.error("🔴 Critical")
 
         elif severity == "Moderate":
-            st.warning(f"🟠 Severity : {severity}")
+            st.warning("🟠 Moderate")
 
         else:
-            st.success(f"🟢 Severity : {severity}")
+            st.success("🟢 Low")
 
-        st.write("### ⚠️ Problems Detected")
+    st.write("### ⚠️ Problems Detected")
 
-        for reason in reasons:
-            st.write(f"• {reason}")
+    for reason in reasons:
+        st.write(f"• {reason}")
 
-        st.write("### 📋 Immediate Actions")
+    st.write("### 📋 Immediate Actions")
 
-        for recommendation in recommendations:
-            st.write(f"✅ {recommendation}")
-
-        st.markdown("---")
+    for rec in recommendations:
+        st.write(f"✅ {rec}")
