@@ -1,113 +1,176 @@
+# 🏥 MedIntel – AI Healthcare Data Pipeline
 
-# 🏥 MedIntel
+MedIntel is an end-to-end AI-powered healthcare monitoring system that simulates real-time patient vital signs, processes healthcare data using PySpark, stores validated records in DuckDB, and provides intelligent health monitoring and recommendations.
 
-## AI-Powered Healthcare Data Pipeline
-
-MedIntel is an AI-powered Healthcare Data Pipeline designed to automate patient health data processing, monitoring, and analysis using modern Data Engineering and AI technologies.
-
-The project focuses on building a scalable healthcare monitoring system capable of processing patient vital signs, detecting abnormal health conditions, classifying severity, generating recommendations, and providing intelligent alerts.
+> 🚧 **Project Status:** In Development
 
 ---
 
-## 🚀 Tech Stack
+# 📌 Project Overview
 
-- Python 3.12
-- DuckDB
-- SQL
-- PySpark *(Planned)*
-- Apache Airflow *(Planned)*
-- Streamlit *(Planned)*
-- LLM Integration *(Planned)*
-- Docker *(Planned)*
-- Git & GitHub
+MedIntel simulates continuous patient monitoring in a hospital environment. Patient vital signs are generated periodically, validated through a PySpark data pipeline, stored in DuckDB, analyzed using machine learning, and visualized through an interactive dashboard.
 
 ---
 
-## ✅ Current Progress
+# 🏗️ System Architecture
 
-### Backend Completed
-
-- DuckDB Database Design
-- Patient & Vital Signs Database
-- Healthcare SQL Queries
-- Patient Monitoring Module
-- Reason Detection Engine
-- Severity Classification Engine
-- Recommendation Engine
-- Alert Engine
-
----
-
-## 📌 Upcoming Features
-
-- Streamlit Dashboard
-- PySpark ETL Pipeline
-- Apache Airflow Workflow Automation
-- LLM-powered Healthcare Insights
-- Docker Deployment
-
----
-
-## 📂 Project Structure
-
-```text
-MedIntel/
-│
-├── airflow/
-├── backend/
-├── database/
-├── docker/
-├── docs/
-├── pyspark/
-├── reports/
-├── services/
-├── simulator/
-├── tests/
-│
-├── app.py
-├── requirements.txt
-├── README.md
-└── pyproject.toml
+```
+Patient Simulator
+        │
+        ▼
+PySpark Data Processing
+        │
+        ▼
+DuckDB Database
+        │
+        ▼
+Machine Learning Model
+        │
+        ▼
+Reason Detection Engine
+        │
+        ▼
+Recommendation Engine
+        │
+        ▼
+Flask Dashboard
 ```
 
 ---
 
-## 🎯 Project Objectives
+# 🚀 Features
 
-- Build an automated healthcare data pipeline
-- Process healthcare data using DuckDB and PySpark
-- Automate workflows using Apache Airflow
-- Monitor patient vital signs
-- Detect abnormal health conditions
-- Generate intelligent recommendations
-- Provide real-time alerts
-- Integrate AI-powered healthcare insights using LLMs
+## ✅ Completed
 
----
-
-## 🛠️ Roadmap
-
-- ✅ Backend Architecture
-- 🔄 Streamlit Dashboard
-- ⏳ PySpark Integration
-- ⏳ Apache Airflow Automation
-- ⏳ LLM Integration
-- ⏳ Docker Deployment
-
----
-
-## 📖 Learning Outcomes
-
-This project is helping me strengthen my knowledge in:
-
-- Data Engineering
-- Healthcare Analytics
-- SQL & DuckDB
-- Python Backend Development
-- ETL Pipelines
-- Workflow Automation
-- AI Engineering
+- DuckDB Database Design
+- Patients Table
+- VitalSigns Table
+- Generated 100 Realistic Patients
+- SQL Monitoring Queries
+- Patient Dashboard (Initial Version)
+- Reason Detection Engine
+- Severity Classification Engine
+- Recommendation Engine
+- Patient Vital Signs Simulator
+- Realistic Vital Sign Generation
+  - Heart Rate
+  - Blood Pressure
+  - SpO₂
+  - Temperature
+  - Respiratory Rate
 
 ---
 
-⭐ This project is actively under development. Follow the repository for future updates.
+## 🚧 In Progress
+
+- PySpark Data Validation Pipeline
+- Live Patient Simulation
+- Data Cleaning & Transformation
+
+---
+
+## 📅 Planned
+
+- Random Forest Health Prediction
+- Airflow Pipeline Automation
+- Flask Web Dashboard
+- Live Alerts
+- Interactive Analytics
+- Docker Deployment
+
+---
+
+# 🛠️ Technology Stack
+
+| Category | Technologies |
+|----------|--------------|
+| Programming | Python |
+| Data Processing | PySpark |
+| Database | DuckDB |
+| Machine Learning | Scikit-learn |
+| Workflow | Apache Airflow |
+| Dashboard | Flask, Plotly |
+| Version Control | Git, GitHub |
+
+---
+
+# 📂 Project Structure
+
+```
+MedIntel/
+│
+├── database/
+│   ├── medintel.duckdb
+│   ├── schema.sql
+│   ├── sample_data.sql
+│   └── setup_database.py
+│
+├── patient_management/
+│   └── generate_patients.py
+│
+├── simulator/
+│   └── patient_simulator.py
+│
+├── monitoring/
+│
+├── dashboard/
+│
+├── airflow/
+│
+├── pyspark/
+│
+└── README.md
+```
+
+---
+
+# 📊 Current Workflow
+
+```
+Generate 100 Patients
+        │
+        ▼
+Generate Vital Signs
+        │
+        ▼
+(PySpark Validation - In Progress)
+        │
+        ▼
+Store Clean Data
+        │
+        ▼
+ML Prediction
+        │
+        ▼
+Recommendation Engine
+        │
+        ▼
+Dashboard
+```
+
+---
+
+# 🎯 Current Progress
+
+- [x] Database Design
+- [x] Patient Generation
+- [x] Vital Sign Simulation
+- [x] Recommendation Engine
+- [x] Severity Detection
+- [ ] PySpark Processing
+- [ ] Live Simulator
+- [ ] Machine Learning
+- [ ] Airflow
+- [ ] Flask Dashboard
+
+---
+
+# 👨‍💻 Author
+
+**Abhishek Rajendrakumar Ainapure**
+
+- GitHub: https://github.com/AbhiA0821
+
+---
+
+⭐ This project is being developed as a real-world AI + Data Engineering portfolio project to demonstrate healthcare data processing, scalable data pipelines, and intelligent patient monitoring.
