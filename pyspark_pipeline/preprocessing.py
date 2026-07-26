@@ -5,7 +5,17 @@ os.environ["PYSPARK_PYTHON"] = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when
+from database.save_processed_data import save_processed_data
+
+
+from pyspark.sql.functions import (
+    col,
+    when,
+    avg,
+    max,
+    min,
+    count
+)
 
 from database.connection import get_connection
 from simulator.patient_simulator import generate_vitals
@@ -28,7 +38,7 @@ def create_spark_session():
 
 
 # =====================================================
-# Read Patients from DuckDB
+# Read Patients
 # =====================================================
 
 def get_all_patients():
@@ -48,7 +58,7 @@ def get_all_patients():
 
 
 # =====================================================
-# Generate Patient Records
+# Generate Records
 # =====================================================
 
 def generate_patient_records():
@@ -98,7 +108,7 @@ def validate_heart_rate(df):
 
 
 # =====================================================
-# SpO2 Validation
+# SPO2 Validation
 # =====================================================
 
 def validate_spo2(df):
@@ -122,8 +132,8 @@ def validate_temperature(df):
     return df.withColumn(
         "temperature_valid",
         when(
-            (col("temperature") >= 35.0) &
-            (col("temperature") <= 42.0),
+            (col("temperature") >= 35) &
+            (col("temperature") <= 42),
             True
         ).otherwise(False)
     )
@@ -173,12 +183,12 @@ def validate_respiratory_rate(df):
 
 
 # =====================================================
-# Create Patient Status
+# Create Status
 # =====================================================
 
 def create_status(df):
 
-    df = df.withColumn(
+    return df.withColumn(
 
         "status",
 
@@ -193,10 +203,7 @@ def create_status(df):
         .when(col("respiratory_rate") > 24, "Warning")
 
         .otherwise("Normal")
-
     )
-
-    return df
 
 
 # =====================================================
@@ -209,9 +216,9 @@ if __name__ == "__main__":
 
     df = create_dataframe(spark)
 
-    # ------------------------
-    # Validation
-    # ------------------------
+    # =====================================================
+    # Apply Validations
+    # =====================================================
 
     df = validate_heart_rate(df)
     df = validate_spo2(df)
@@ -219,15 +226,15 @@ if __name__ == "__main__":
     df = validate_blood_pressure(df)
     df = validate_respiratory_rate(df)
 
-    # ------------------------
-    # Patient Status
-    # ------------------------
+    # =====================================================
+    # Create Patient Status
+    # =====================================================
 
     df = create_status(df)
 
-    # ------------------------
+    # =====================================================
     # Patient Data
-    # ------------------------
+    # =====================================================
 
     print("\n==============================")
     print("PATIENT DATA")
@@ -235,9 +242,9 @@ if __name__ == "__main__":
 
     df.show(truncate=False)
 
-    # ------------------------
+    # =====================================================
     # Schema
-    # ------------------------
+    # =====================================================
 
     print("\n==============================")
     print("SCHEMA")
@@ -245,19 +252,19 @@ if __name__ == "__main__":
 
     df.printSchema()
 
-    # ------------------------
+    # =====================================================
     # Columns
-    # ------------------------
+    # =====================================================
 
     print("\n==============================")
-    print("COLUMNS")
+    print("COLUMN NAMES")
     print("==============================\n")
 
     print(df.columns)
 
-    # ------------------------
+    # =====================================================
     # Total Patients
-    # ------------------------
+    # =====================================================
 
     print("\n==============================")
     print("TOTAL PATIENTS")
@@ -265,9 +272,9 @@ if __name__ == "__main__":
 
     print(df.count())
 
-    # ------------------------
+    # =====================================================
     # Validation Results
-    # ------------------------
+    # =====================================================
 
     print("\n==============================")
     print("VALIDATION RESULTS")
@@ -275,29 +282,23 @@ if __name__ == "__main__":
 
     df.select(
         "patient_id",
-
         "heart_rate",
         "hr_valid",
-
         "spo2",
         "spo2_valid",
-
         "temperature",
         "temperature_valid",
-
         "systolic_bp",
         "systolic_valid",
-
         "diastolic_bp",
         "diastolic_valid",
-
         "respiratory_rate",
         "respiratory_valid"
     ).show(truncate=False)
 
-    # ------------------------
+    # =====================================================
     # Patient Status
-    # ------------------------
+    # =====================================================
 
     print("\n==============================")
     print("PATIENT STATUS")
@@ -313,5 +314,184 @@ if __name__ == "__main__":
         "respiratory_rate",
         "status"
     ).show(truncate=False)
+
+    # =====================================================
+    # Count Patients by Status
+    # =====================================================
+
+    print("\n==============================")
+    print("PATIENT COUNT BY STATUS")
+    print("==============================\n")
+
+    df.groupBy("status").count().show()
+
+    # =====================================================
+    # Critical Patients
+    # =====================================================
+
+    print("\n==============================")
+    print("CRITICAL PATIENTS")
+    print("==============================\n")
+
+    critical_df = df.filter(col("status") == "Critical")
+
+    critical_df.show(truncate=False)
+
+    # =====================================================
+    # Warning Patients
+    # =====================================================
+
+    print("\n==============================")
+    print("WARNING PATIENTS")
+    print("==============================\n")
+
+    warning_df = df.filter(col("status") == "Warning")
+
+    warning_df.show(truncate=False)
+
+    # =====================================================
+    # Normal Patients
+    # =====================================================
+
+    print("\n==============================")
+    print("NORMAL PATIENTS")
+    print("==============================\n")
+
+    normal_df = df.filter(col("status") == "Normal")
+
+    normal_df.show(truncate=False)
+
+    # =====================================================
+    # Average Heart Rate
+    # =====================================================
+
+    print("\n==============================")
+    print("AVERAGE HEART RATE")
+    print("==============================\n")
+
+    df.select(
+        avg("heart_rate").alias("Average Heart Rate")
+    ).show()
+
+    # =====================================================
+    # Average Temperature
+    # =====================================================
+
+    print("\n==============================")
+    print("AVERAGE TEMPERATURE")
+    print("==============================\n")
+
+    df.select(
+        avg("temperature").alias("Average Temperature")
+    ).show()
+
+    # =====================================================
+    # Average SpO2
+    # =====================================================
+
+    print("\n==============================")
+    print("AVERAGE SPO2")
+    print("==============================\n")
+
+    df.select(
+        avg("spo2").alias("Average SPO2")
+    ).show()
+
+    # =====================================================
+    # Maximum Temperature
+    # =====================================================
+
+    print("\n==============================")
+    print("MAXIMUM TEMPERATURE")
+    print("==============================\n")
+
+    df.select(
+        max("temperature").alias("Maximum Temperature")
+    ).show()
+
+    # =====================================================
+    # Minimum SpO2
+    # =====================================================
+
+    print("\n==============================")
+    print("MINIMUM SPO2")
+    print("==============================\n")
+
+    df.select(
+        min("spo2").alias("Minimum SPO2")
+    ).show()
+
+    # =====================================================
+    # Top 10 Highest Heart Rate
+    # =====================================================
+
+    print("\n==============================")
+    print("TOP 10 HEART RATE")
+    print("==============================\n")
+
+    df.orderBy(
+        col("heart_rate").desc()
+    ).show(10, truncate=False)
+
+    # =====================================================
+    # Lowest SPO2
+    # =====================================================
+
+    print("\n==============================")
+    print("LOWEST SPO2")
+    print("==============================\n")
+
+    df.orderBy(
+        col("spo2").asc()
+    ).show(10, truncate=False)
+
+    # =====================================================
+    # Top 5 Critical Patients
+    # =====================================================
+
+    print("\n==============================")
+    print("TOP 5 CRITICAL PATIENTS")
+    print("==============================\n")
+
+    df.filter(
+        col("status") == "Critical"
+    ).orderBy(
+        col("heart_rate").desc()
+    ).show(5, truncate=False)
+
+    # =====================================================
+    # High Heart Rate Count
+    # =====================================================
+
+    print("\n==============================")
+    print("HIGH HEART RATE PATIENTS")
+    print("==============================\n")
+
+    high_hr = df.filter(col("heart_rate") > 120).count()
+
+    print("Patients with Heart Rate > 120 :", high_hr)
+
+    # =====================================================
+    # Low SPO2 Count
+    # =====================================================
+
+    print("\n==============================")
+    print("LOW SPO2 PATIENTS")
+    print("==============================\n")
+
+    low_spo2 = df.filter(col("spo2") < 90).count()
+
+    print("Patients with SPO2 < 90 :", low_spo2)
+
+
+    print("\n==============================")
+    print("SAVING PROCESSED DATA")
+    print("==============================\n")
+
+    save_processed_data(df)
+
+    # =====================================================
+    # Stop Spark
+    # =====================================================
 
     spark.stop()
