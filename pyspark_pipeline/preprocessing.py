@@ -6,85 +6,69 @@ os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, when
+
 from database.connection import get_connection
 from simulator.patient_simulator import generate_vitals
 
 
-# ---------------------------------------
+# -------------------------------
 # Create Spark Session
-# ---------------------------------------
+# -------------------------------
 def create_spark_session():
-
     spark = (
         SparkSession.builder
         .appName("MedIntel")
         .master("local[*]")
         .getOrCreate()
     )
-
     return spark
 
 
-# ---------------------------------------
+# -------------------------------
 # Read Patients from DuckDB
-# ---------------------------------------
+# -------------------------------
 def get_all_patients():
 
     con = get_connection()
 
-    query = """
-        SELECT
-            patient_id,
-            first_name,
-            last_name,
-            age,
-            gender,
-            blood_group,
-            ward,
-            admission_date
-        FROM Patients;
-    """
+    patients = con.execute("""
+        SELECT *
+        FROM Patients
+    """).fetchall()
 
-    patients = con.execute(query).fetchall()
+    columns = [desc[0] for desc in con.description]
 
     con.close()
 
-    return patients
+    return patients, columns
 
 
-# ---------------------------------------
-# Generate Vitals for Every Patient
-# ---------------------------------------
+# -------------------------------
+# Generate Patient Records
+# -------------------------------
 def generate_patient_records():
 
-    patients = get_all_patients()
+    patients, columns = get_all_patients()
 
     records = []
 
     for patient in patients:
 
+        patient_dict = dict(zip(columns, patient))
+
         vitals = generate_vitals()
 
-        record = {
-            "patient_id": patient[0],
-            "first_name": patient[1],
-            "last_name": patient[2],
-            "age": patient[3],
-            "gender": patient[4],
-            "blood_group": patient[5],
-            "ward": patient[6],
-            "admission_date": patient[7],
-            **vitals
-        }
+        patient_dict.update(vitals)
 
-        records.append(record)
+        records.append(patient_dict)
 
     return records
 
 
-# ---------------------------------------
-# Convert to Spark DataFrame
-# ---------------------------------------
+# -------------------------------
+# Create Spark DataFrame
+# -------------------------------
 def create_dataframe(spark):
 
     records = generate_patient_records()
@@ -94,17 +78,67 @@ def create_dataframe(spark):
     return df
 
 
-# ---------------------------------------
+# -------------------------------
+# Step 6.1 - Heart Rate Validation
+# -------------------------------
+def validate_heart_rate(df):
+
+    df = df.withColumn(
+        "hr_valid",
+        when(
+            (col("heart_rate") >= 40) &
+            (col("heart_rate") <= 180),
+            True
+        ).otherwise(False)
+    )
+
+    return df
+
+
+# -------------------------------
 # Main
-# ---------------------------------------
+# -------------------------------
 if __name__ == "__main__":
 
     spark = create_spark_session()
 
     df = create_dataframe(spark)
 
-    print("\nPatient Data\n")
+    # Validate Heart Rate
+    df = validate_heart_rate(df)
+
+    print("\n==============================")
+    print("PATIENT DATA")
+    print("==============================\n")
 
     df.show(truncate=False)
 
-    print("\nTotal Patients :", df.count())
+    print("\n==============================")
+    print("DATAFRAME SCHEMA")
+    print("==============================\n")
+
+    df.printSchema()
+
+    print("\n==============================")
+    print("COLUMN NAMES")
+    print("==============================\n")
+
+    print(df.columns)
+
+    print("\n==============================")
+    print("TOTAL PATIENTS")
+    print("==============================\n")
+
+    print(df.count())
+
+    print("\n==============================")
+    print("HEART RATE VALIDATION")
+    print("==============================\n")
+
+    df.select(
+        "patient_id",
+        "heart_rate",
+        "hr_valid"
+    ).show(truncate=False)
+
+    spark.stop()
