@@ -157,3 +157,4 @@ if st.session_state.selected_patient:
 
     for rec in recommendations:
         st.write(f"✅ {rec}")
+        

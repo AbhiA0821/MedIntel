@@ -1,5 +1,5 @@
 def main():
-    print("Hello from pyspark!")
+    print("Hello from pyspark-pipeline!")
 
 
 if __name__ == "__main__":

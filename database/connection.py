@@ -1,4 +1,4 @@
 import duckdb
 
-con = duckdb.connect("database/medintel.duckdb")
-
+def get_connection():
+    return duckdb.connect("database/medintel.duckdb")
