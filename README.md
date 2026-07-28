@@ -1,96 +1,30 @@
-# 🏥 MedIntel – AI Healthcare Data Pipeline
+# 🏥 MedIntel - AI Healthcare Data Pipeline & Intelligent Patient Monitoring System
 
-MedIntel is an end-to-end AI-powered healthcare monitoring system that simulates real-time patient vital signs, processes healthcare data using PySpark, stores validated records in DuckDB, and provides intelligent health monitoring and recommendations.
+## 📌 Overview
 
-> 🚧 **Project Status:** In Development
+MedIntel is an end-to-end AI-powered Healthcare Data Engineering project designed to monitor patient health using vital signs. The project combines Data Engineering, Machine Learning, and Web Technologies to process patient data, generate insights, and provide an intelligent healthcare dashboard.
 
----
-
-# 📌 Project Overview
-
-MedIntel simulates continuous patient monitoring in a hospital environment. Patient vital signs are generated periodically, validated through a PySpark data pipeline, stored in DuckDB, analyzed using machine learning, and visualized through an interactive dashboard.
+The project is being developed collaboratively using GitHub with separate modules for Data Engineering, Machine Learning, and Flask Dashboard.
 
 ---
 
-# 🏗️ System Architecture
-
-```
-Patient Simulator
-        │
-        ▼
-PySpark Data Processing
-        │
-        ▼
-DuckDB Database
-        │
-        ▼
-Machine Learning Model
-        │
-        ▼
-Reason Detection Engine
-        │
-        ▼
-Recommendation Engine
-        │
-        ▼
-Flask Dashboard
-```
-
----
-
-# 🚀 Features
+# 🚀 Current Project Status
 
 ## ✅ Completed
 
+- Project Structure Setup
 - DuckDB Database Design
 - Patients Table
-- VitalSigns Table
-- Generated 100 Realistic Patients
-- SQL Monitoring Queries
-- Patient Dashboard (Initial Version)
-- Reason Detection Engine
-- Severity Classification Engine
-- Recommendation Engine
-- Patient Vital Signs Simulator
-- Realistic Vital Sign Generation
-  - Heart Rate
-  - Blood Pressure
-  - SpO₂
-  - Temperature
-  - Respiratory Rate
-
----
-
-## 🚧 In Progress
-
-- PySpark Data Validation Pipeline
-- Live Patient Simulation
-- Data Cleaning & Transformation
-
----
-
-## 📅 Planned
-
-- Random Forest Health Prediction
-- Airflow Pipeline Automation
-- Flask Web Dashboard
-- Live Alerts
-- Interactive Analytics
-- Docker Deployment
-
----
-
-# 🛠️ Technology Stack
-
-| Category | Technologies |
-|----------|--------------|
-| Programming | Python |
-| Data Processing | PySpark |
-| Database | DuckDB |
-| Machine Learning | Scikit-learn |
-| Workflow | Apache Airflow |
-| Dashboard | Flask, Plotly |
-| Version Control | Git, GitHub |
+- Vital Signs Table
+- Sample Data Generation
+- Patient Vital Simulator
+- PySpark ETL Pipeline
+- Data Validation
+- Patient Health Classification
+- Healthcare Analytics
+- ProcessedPatientVitals Table
+- GitHub Repository Setup
+- Team Collaboration using Git Branches
 
 ---
 
@@ -99,78 +33,269 @@ Flask Dashboard
 ```
 MedIntel/
 │
+├── airflow/
+│
+├── backend/
+│
 ├── database/
 │   ├── medintel.duckdb
 │   ├── schema.sql
-│   ├── sample_data.sql
-│   └── setup_database.py
+│   └── sample_data.sql
 │
-├── patient_management/
-│   └── generate_patients.py
+├── docs/
 │
-├── simulator/
-│   └── patient_simulator.py
+├── ml_model/
 │
-├── monitoring/
+├── pyspark_pipeline/
 │
-├── dashboard/
+├── static/
 │
-├── airflow/
+├── templates/
 │
-├── pyspark/
+├── app.py
+│
+├── requirements.txt
 │
 └── README.md
 ```
 
 ---
 
-# 📊 Current Workflow
+# 🛠 Tech Stack
+
+### Data Engineering
+
+- Python
+- PySpark
+- DuckDB
+- Pandas
+
+### Machine Learning
+
+- Scikit-Learn
+- Random Forest
+- Logistic Regression
+- Decision Tree
+- XGBoost (Optional)
+
+### Backend
+
+- Flask
+
+### Frontend
+
+- HTML
+- CSS
+- Bootstrap
+- Chart.js
+
+### Workflow Automation
+
+- Apache Airflow *(In Progress)*
+
+### Deployment
+
+- Docker *(Planned)*
+
+---
+
+# 🔄 ETL Pipeline
 
 ```
-Generate 100 Patients
-        │
-        ▼
-Generate Vital Signs
-        │
-        ▼
-(PySpark Validation - In Progress)
-        │
-        ▼
-Store Clean Data
-        │
-        ▼
-ML Prediction
-        │
-        ▼
-Recommendation Engine
-        │
-        ▼
-Dashboard
+Patients Data
+      │
+      ▼
+DuckDB Database
+      │
+      ▼
+PySpark ETL Pipeline
+      │
+      ├── Data Validation
+      ├── Vital Sign Processing
+      ├── Patient Classification
+      └── Healthcare Analytics
+      │
+      ▼
+ProcessedPatientVitals
 ```
 
 ---
 
-# 🎯 Current Progress
+# 📊 Current Features
 
-- [x] Database Design
-- [x] Patient Generation
-- [x] Vital Sign Simulation
-- [x] Recommendation Engine
-- [x] Severity Detection
-- [ ] PySpark Processing
-- [ ] Live Simulator
-- [ ] Machine Learning
-- [ ] Airflow
-- [ ] Flask Dashboard
+✅ Patient Database
+
+✅ Vital Sign Generation
+
+✅ Data Validation
+
+✅ Patient Classification
+
+- Normal
+- Warning
+- Critical
+
+✅ Healthcare Analytics
+
+✅ Processed Data Storage
 
 ---
 
-# 👨‍💻 Author
+# 🧠 Machine Learning Module (In Progress)
+
+The ML module will predict patient health status using processed healthcare data.
+
+### Planned Models
+
+- Random Forest (Recommended)
+- Logistic Regression
+- Decision Tree
+- XGBoost (Optional)
+
+### Output
+
+- Patient Risk Prediction
+- Health Status Prediction
+
+---
+
+# 🌐 Flask Dashboard (In Progress)
+
+The dashboard will provide real-time visualization of patient data.
+
+### Planned Features
+
+- Dashboard Overview
+- Total Patients
+- Normal Patients
+- Warning Patients
+- Critical Patients
+- Patient Table
+- Search & Filters
+- Charts
+- AI Insights
+
+---
+
+# ⚙️ Airflow (Upcoming)
+
+Apache Airflow will automate:
+
+- ETL Pipeline Execution
+- Daily Data Processing
+- Data Validation
+- Database Updates
+
+---
+
+# 🐳 Docker (Upcoming)
+
+The complete project will be containerized using Docker for easy deployment.
+
+---
+
+# 👥 Team Structure
+
+## Data Engineering
+
+Responsibilities:
+
+- DuckDB
+- PySpark ETL
+- Data Validation
+- Airflow
+- Docker
+- Final Integration
+
+---
+
+## Machine Learning
+
+Responsibilities:
+
+- Data Preprocessing
+- Model Training
+- Model Evaluation
+- Prediction Module
+
+---
+
+## Flask Development
+
+Responsibilities:
+
+- Flask Backend
+- HTML/CSS
+- Bootstrap UI
+- Dashboard Development
+- Charts
+- Database Integration
+
+---
+
+# 🌿 Git Workflow
+
+```
+main
+│
+├── ml-model
+│
+└── flask-dashboard
+```
+
+- `main` → Stable project
+- `ml-model` → Machine Learning development
+- `flask-dashboard` → Dashboard development
+
+---
+
+# 🎯 Project Roadmap
+
+## Phase 1 ✅
+
+- Database Design
+- ETL Pipeline
+- Data Validation
+- Patient Classification
+- Analytics
+
+## Phase 2 🚧
+
+- Apache Airflow
+
+## Phase 3 🚧
+
+- Machine Learning Integration
+
+## Phase 4 🚧
+
+- Flask Dashboard
+
+## Phase 5 🚧
+
+- Docker Deployment
+
+---
+
+# 📈 Future Enhancements
+
+- AI Health Recommendations
+- LLM Integration
+- Live Patient Monitoring
+- Automated ETL Scheduling
+- Docker Deployment
+- Cloud Deployment
+
+---
+
+# 👨‍💻 Developed By
 
 **Abhishek Rajendrakumar Ainapure**
 
-- GitHub: https://github.com/AbhiA0821
+B.Tech Artificial Intelligence & Data Science
+
+Data Engineering | Machine Learning | AI
 
 ---
 
-⭐ This project is being developed as a real-world AI + Data Engineering portfolio project to demonstrate healthcare data processing, scalable data pipelines, and intelligent patient monitoring.
+## ⭐ If you found this project interesting, don't forget to star the repository!
