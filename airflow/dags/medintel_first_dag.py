@@ -9,3 +9,11 @@ with DAG(
     catchup=False,
     tags=["medintel", "learning"],
 ) as dag:
+
+    def load_patient_data():
+        print("Loading patient data...")
+
+    load_task = PythonOperator(
+        task_id="load_patient_data",
+        python_callable=load_patient_data,
+    )
