@@ -1,4 +1,4 @@
-# 🏥 MedIntel - AI Healthcare Data Pipeline & Intelligent Patient Monitoring System
+# 🏥 MedIntel - AI Healthcare Data Pipeline & Intelligent Patient Monitoring System.
 
 ## 📌 Overview
 
