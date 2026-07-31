@@ -1,6 +1,8 @@
-from database.connection import con
+from database.connection import get_connection
+
 
 def get_critical_patients():
+    """Return patients whose latest stored vitals meet alert conditions."""
 
     query = """
     SELECT
@@ -14,7 +16,7 @@ def get_critical_patients():
         v.diastolic_bp
     FROM Patients p
     INNER JOIN VitalSigns v
-    ON p.patient_id = v.patient_id
+        ON p.patient_id = v.patient_id
     WHERE
         v.spo2 < 92
         OR v.heart_rate > 100
@@ -22,4 +24,25 @@ def get_critical_patients():
         OR v.systolic_bp > 140;
     """
 
-    return con.execute(query).fetchall()
+    con = get_connection()
+
+    try:
+        return con.execute(query).fetchall()
+    finally:
+        con.close()
+
+
+def get_total_patients():
+    """Return the total number of registered patients."""
+
+    query = """
+    SELECT COUNT(*)
+    FROM Patients;
+    """
+
+    con = get_connection()
+
+    try:
+        return con.execute(query).fetchone()[0]
+    finally:
+        con.close()
