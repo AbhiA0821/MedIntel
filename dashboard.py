@@ -1,6 +1,9 @@
 import streamlit as st
 
-from database.monitoring_queries import get_critical_patients
+from database.monitoring_queries import (
+    get_critical_patients,
+    get_total_patients,
+)
 from services.reason_detection import get_patient_reasons
 from services.severity_engine import classify_severity
 from services.recommendation_engine import get_recommendations
@@ -29,12 +32,12 @@ st.markdown("---")
 # -------------------------------------------------
 
 patients = get_critical_patients()
+total_patients=get_total_patients()
 
 # -------------------------------------------------
 # Dashboard Metrics
 # -------------------------------------------------
 
-total_patients = len(patients)
 critical = 0
 moderate = 0
 low = 0
