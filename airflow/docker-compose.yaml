@@ -46,6 +46,9 @@
 ---
 x-airflow-common:
   &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
   # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
