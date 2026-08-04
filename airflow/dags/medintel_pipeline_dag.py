@@ -1,11 +1,9 @@
 from datetime import datetime, timedelta
+import subprocess
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
-
-import subprocess
-import duckdb
 
 
 # =====================================================
@@ -13,156 +11,111 @@ import duckdb
 # =====================================================
 
 PROJECT_PATH = "/opt/medintel"
-DATABASE_PATH = "/opt/medintel/database/medintel.duckdb"
 
 
 # =====================================================
-# Task 1 - Run PySpark ETL
+# Start Continuous MedIntel Monitoring
 # =====================================================
 
-def run_pyspark_etl():
+def start_medintel_monitoring():
+    """
+    Start the MedIntel continuous monitoring service.
+
+    The monitoring service performs:
+        Vital Generation
+            ↓
+        Raw DuckDB Storage
+            ↓
+        PySpark Preprocessing
+            ↓
+        Processed DuckDB Storage
+            ↓
+        ML Prediction (later)
+            ↓
+        Recommendation (later)
+            ↓
+        Alert (later)
+
+    The service itself maintains the approximately
+    5-second continuous monitoring cycle.
+    """
 
     print("=" * 60)
-    print("Starting MedIntel PySpark ETL")
+    print("STARTING MEDINTEL CONTINUOUS MONITORING")
     print("=" * 60)
 
-    result = subprocess.run(
+    process = subprocess.Popen(
         [
             "python",
+            "-u",
             "-m",
-            "pyspark_pipeline.preprocessing"
+            "services.monitoring_pipeline"
         ],
-        cwd=PROJECT_PATH,
-        capture_output=True,
-        text=True
+        cwd=PROJECT_PATH
     )
 
-    # Show PySpark output inside Airflow logs
-    print(result.stdout)
+    print(
+        f"MedIntel monitoring process started "
+        f"with PID: {process.pid}"
+    )
 
-    if result.stderr:
-        print(result.stderr)
+    # Keep this Airflow task attached to the
+    # monitoring process.
+    return_code = process.wait()
 
-    # Fail Airflow task if PySpark fails
-    if result.returncode != 0:
+    if return_code != 0:
         raise RuntimeError(
-            f"PySpark ETL failed with exit code "
-            f"{result.returncode}"
+            "MedIntel monitoring service stopped "
+            f"with exit code {return_code}"
         )
-
-    print("PySpark ETL completed successfully.")
 
 
 # =====================================================
-# Task 2 - Verify Processed Data
-# =====================================================
-
-def verify_processed_data():
-
-    print("=" * 60)
-    print("Verifying ProcessedPatientVitals")
-    print("=" * 60)
-
-    con = duckdb.connect(DATABASE_PATH, read_only=True)
-
-    try:
-
-        # Check whether table exists
-        table_exists = con.execute("""
-            SELECT COUNT(*)
-            FROM information_schema.tables
-            WHERE table_name = 'ProcessedPatientVitals'
-        """).fetchone()[0]
-
-        if table_exists == 0:
-            raise ValueError(
-                "ProcessedPatientVitals table does not exist."
-            )
-
-        # Count processed records
-        total_records = con.execute("""
-            SELECT COUNT(*)
-            FROM ProcessedPatientVitals
-        """).fetchone()[0]
-
-        # Count patients
-        total_patients = con.execute("""
-            SELECT COUNT(DISTINCT patient_id)
-            FROM ProcessedPatientVitals
-        """).fetchone()[0]
-
-        print(
-            f"Processed records : {total_records}"
-        )
-
-        print(
-            f"Patients represented : {total_patients}"
-        )
-
-        if total_records == 0:
-            raise ValueError(
-                "ProcessedPatientVitals contains no records."
-            )
-
-        print("=" * 60)
-        print("Processed data verification successful.")
-        print("=" * 60)
-
-    finally:
-
-        con.close()
-
-
-# =====================================================
-# Default Airflow Settings
+# Airflow Configuration
 # =====================================================
 
 default_args = {
-
     "owner": "medintel",
-
-    # Don't run historical missed DAG executions
     "depends_on_past": False,
-
-    # Retry task if temporary failure occurs
-    "retries": 2,
-
-    # Wait before retry
+    "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
 
 
 # =====================================================
-# MedIntel DAG
+# DAG
 # =====================================================
 
 with DAG(
 
-    dag_id="medintel_pipeline",
+    dag_id="medintel_continuous_monitoring",
 
     description=(
-        "MedIntel healthcare data engineering "
-        "pipeline using PySpark and DuckDB"
+        "Orchestrates the continuous MedIntel "
+        "patient monitoring pipeline"
     ),
 
     default_args=default_args,
 
-    # Run pipeline every 5 minutes
-    schedule="*/5 * * * *",
+    # Airflow starts the service manually/on deployment.
+    # The service itself performs the 5-second loop.
+    schedule=None,
 
     start_date=datetime(2026, 8, 1),
 
     catchup=False,
 
+    max_active_runs=1,
+
     tags=[
         "medintel",
         "healthcare",
         "pyspark",
-        "duckdb"
+        "duckdb",
+        "monitoring"
     ],
 
 ) as dag:
-
 
     # =================================================
     # Start
@@ -172,44 +125,17 @@ with DAG(
         task_id="start_pipeline"
     )
 
-
     # =================================================
-    # PySpark ETL
+    # Continuous Monitoring
     # =================================================
 
-    pyspark_etl = PythonOperator(
-        task_id="run_pyspark_etl",
-        python_callable=run_pyspark_etl,
-        execution_timeout=timedelta(minutes=10)
+    run_monitoring = PythonOperator(
+        task_id="run_continuous_monitoring",
+        python_callable=start_medintel_monitoring
     )
 
-
     # =================================================
-    # Verify Processed Data
-    # =================================================
-
-    verify_data = PythonOperator(
-        task_id="verify_processed_data",
-        python_callable=verify_processed_data
-    )
-
-
-    # =================================================
-    # End
+    # Dependencies
     # =================================================
 
-    end_pipeline = EmptyOperator(
-        task_id="end_pipeline"
-    )
-
-
-    # =================================================
-    # Task Dependencies
-    # =================================================
-
-    (
-        start_pipeline
-        >> pyspark_etl
-        >> verify_data
-        >> end_pipeline
-    )
+    start_pipeline >> run_monitoring
