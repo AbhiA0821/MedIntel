@@ -12,14 +12,14 @@ from database.save_processed_data import save_processed_data
 
 
 # =====================================================
-# Create Spark Session
+# Spark Session
 # =====================================================
 
 def create_spark_session():
 
     spark = (
         SparkSession.builder
-        .appName("MedIntelETL")
+        .appName("MedIntelContinuousMonitoring")
         .master("local[2]")
         .config("spark.driver.memory", "1g")
         .config("spark.sql.shuffle.partitions", "2")
@@ -32,16 +32,23 @@ def create_spark_session():
 
 
 # =====================================================
-# Extract Data From DuckDB
+# Read ONLY Newly Generated Vital Records
 # =====================================================
 
-def get_patient_vital_records():
+def get_patient_vital_records(vital_ids):
+
+    if not vital_ids:
+        return [], []
 
     con = get_connection()
 
     try:
 
-        records = con.execute("""
+        placeholders = ",".join(
+            ["?"] * len(vital_ids)
+        )
+
+        query = f"""
             SELECT
                 v.vital_id,
                 p.patient_id,
@@ -66,8 +73,15 @@ def get_patient_vital_records():
             INNER JOIN Patients p
                 ON v.patient_id = p.patient_id
 
-            ORDER BY v.recorded_at DESC
-        """).fetchall()
+            WHERE v.vital_id IN ({placeholders})
+
+            ORDER BY v.vital_id
+        """
+
+        records = con.execute(
+            query,
+            vital_ids
+        ).fetchall()
 
         columns = [
             description[0]
@@ -77,6 +91,7 @@ def get_patient_vital_records():
         return records, columns
 
     finally:
+
         con.close()
 
 
@@ -84,9 +99,11 @@ def get_patient_vital_records():
 # Create Spark DataFrame
 # =====================================================
 
-def create_dataframe(spark):
+def create_dataframe(spark, vital_ids):
 
-    records, columns = get_patient_vital_records()
+    records, columns = get_patient_vital_records(
+        vital_ids
+    )
 
     if not records:
         return None
@@ -100,12 +117,12 @@ def create_dataframe(spark):
 
 
 # =====================================================
-# Validate Heart Rate
+# Validation
 # =====================================================
 
-def validate_heart_rate(df):
+def preprocess_data(df):
 
-    return df.withColumn(
+    df = df.withColumn(
         "hr_valid",
         when(
             (col("heart_rate") >= 40) &
@@ -114,14 +131,7 @@ def validate_heart_rate(df):
         ).otherwise(False)
     )
 
-
-# =====================================================
-# Validate SpO2
-# =====================================================
-
-def validate_spo2(df):
-
-    return df.withColumn(
+    df = df.withColumn(
         "spo2_valid",
         when(
             (col("spo2") >= 90) &
@@ -130,14 +140,7 @@ def validate_spo2(df):
         ).otherwise(False)
     )
 
-
-# =====================================================
-# Validate Temperature
-# =====================================================
-
-def validate_temperature(df):
-
-    return df.withColumn(
+    df = df.withColumn(
         "temperature_valid",
         when(
             (col("temperature") >= 35) &
@@ -145,13 +148,6 @@ def validate_temperature(df):
             True
         ).otherwise(False)
     )
-
-
-# =====================================================
-# Validate Blood Pressure
-# =====================================================
-
-def validate_blood_pressure(df):
 
     df = df.withColumn(
         "systolic_valid",
@@ -171,16 +167,7 @@ def validate_blood_pressure(df):
         ).otherwise(False)
     )
 
-    return df
-
-
-# =====================================================
-# Validate Respiratory Rate
-# =====================================================
-
-def validate_respiratory_rate(df):
-
-    return df.withColumn(
+    df = df.withColumn(
         "respiratory_valid",
         when(
             (col("respiratory_rate") >= 8) &
@@ -189,19 +176,9 @@ def validate_respiratory_rate(df):
         ).otherwise(False)
     )
 
-
-# =====================================================
-# Temporary Baseline Status
-# =====================================================
-# NOTE:
-# This is NOT the final ML prediction.
-# It is retained only as a temporary baseline while
-# the ML module is being developed.
-# =====================================================
-
-def create_status(df):
-
-    return df.withColumn(
+    # Temporary baseline only.
+    # Final status will later come from ML.
+    df = df.withColumn(
         "status",
 
         when(
@@ -232,97 +209,51 @@ def create_status(df):
         .otherwise("Normal")
     )
 
+    return df
+
 
 # =====================================================
-# Apply Transformations
+# Process ONE New Batch
 # =====================================================
 
-def preprocess_data(df):
+def process_batch(spark, vital_ids):
 
-    df = validate_heart_rate(df)
+    if not vital_ids:
+        print("No new vital records to process.")
+        return None
 
-    df = validate_spo2(df)
+    print(
+        f"Processing {len(vital_ids)} new vital readings..."
+    )
 
-    df = validate_temperature(df)
+    df = create_dataframe(
+        spark,
+        vital_ids
+    )
 
-    df = validate_blood_pressure(df)
+    if df is None:
+        print("No matching vital records found.")
+        return None
 
-    df = validate_respiratory_rate(df)
+    df = preprocess_data(df)
 
-    df = create_status(df)
+    save_processed_data(df)
+
+    print(
+        f"Successfully processed "
+        f"{len(vital_ids)} vital readings."
+    )
 
     return df
 
 
 # =====================================================
-# Main ETL Pipeline
-# =====================================================
-
-def run_pipeline():
-
-    print("\n" + "=" * 55)
-    print("MEDINTEL PYSPARK ETL STARTED")
-    print("=" * 55)
-
-    spark = create_spark_session()
-
-    try:
-
-        # ---------------------------------------------
-        # EXTRACT
-        # ---------------------------------------------
-
-        print("[1/4] Reading VitalSigns from DuckDB...")
-
-        df = create_dataframe(spark)
-
-        if df is None:
-
-            print("No vital records available.")
-            return
-
-        # ---------------------------------------------
-        # TRANSFORM
-        # ---------------------------------------------
-
-        print("[2/4] Running PySpark preprocessing...")
-
-        df = preprocess_data(df)
-
-        # ---------------------------------------------
-        # LOAD
-        # ---------------------------------------------
-
-        print("[3/4] Saving processed records to DuckDB...")
-
-        save_processed_data(df)
-
-        # ---------------------------------------------
-        # COMPLETE
-        # ---------------------------------------------
-
-        print("[4/4] ETL completed successfully.")
-
-        print("=" * 55)
-        print("MEDINTEL PYSPARK ETL COMPLETED")
-        print("=" * 55)
-
-    except Exception as e:
-
-        print("\nMEDINTEL PYSPARK ETL FAILED")
-        print(f"Error: {e}")
-
-        raise
-
-    finally:
-
-        spark.stop()
-
-
-# =====================================================
-# Application Entry Point
+# Standalone Test
 # =====================================================
 
 if __name__ == "__main__":
 
-    run_pipeline()
+    print(
+        "Run this module through "
+        "services.monitoring_pipeline."
+    )
