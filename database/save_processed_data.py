@@ -1,51 +1,44 @@
 from database.connection import get_connection
 
 
+MAX_PROCESSED_READINGS_PER_PATIENT = 50
+
+
 def save_processed_data(df):
     """
-    Save processed patient vital records from PySpark into DuckDB.
+    Save a newly processed PySpark batch into DuckDB.
 
-    The table is refreshed with the currently retained raw vital-sign
-    readings. VitalSigns already keeps only the latest 50 readings
-    per patient.
+    Existing processed records are preserved, duplicate vital IDs
+    are avoided, and only the latest 50 processed readings per
+    patient are retained.
     """
 
-    # Convert Spark DataFrame to Pandas
     pandas_df = df.toPandas()
 
     if pandas_df.empty:
-        print("No processed records available to save.")
+        print("No processed records to save.")
         return
 
     con = get_connection()
 
     try:
 
-        # --------------------------------------------------
-        # Replace previous processed snapshot
-        # --------------------------------------------------
-
-        con.execute("""
-            DROP TABLE IF EXISTS ProcessedPatientVitals
-        """)
-
-        # Register Pandas DataFrame temporarily
+        # Register new processed batch
         con.register(
-            "patient_df",
+            "new_processed_batch",
             pandas_df
         )
 
         # --------------------------------------------------
-        # Create Processed Table
+        # Create table on first run
         # --------------------------------------------------
 
         con.execute("""
-            CREATE TABLE ProcessedPatientVitals AS
+            CREATE TABLE IF NOT EXISTS ProcessedPatientVitals AS
 
             SELECT
                 vital_id,
                 patient_id,
-
                 first_name,
                 last_name,
                 age,
@@ -69,21 +62,91 @@ def save_processed_data(df):
                 respiratory_valid,
 
                 status,
-
                 recorded_at
 
-            FROM patient_df
+            FROM new_processed_batch
 
-            ORDER BY
-                patient_id,
-                recorded_at DESC
+            WHERE 1 = 0
         """)
 
-        con.unregister("patient_df")
+        # --------------------------------------------------
+        # Remove duplicate vital IDs if batch is retried
+        # --------------------------------------------------
+
+        con.execute("""
+            DELETE FROM ProcessedPatientVitals
+            WHERE vital_id IN (
+                SELECT vital_id
+                FROM new_processed_batch
+            )
+        """)
 
         # --------------------------------------------------
-        # Verification
+        # Insert new processed batch
         # --------------------------------------------------
+
+        con.execute("""
+            INSERT INTO ProcessedPatientVitals
+
+            SELECT
+                vital_id,
+                patient_id,
+                first_name,
+                last_name,
+                age,
+                gender,
+                blood_group,
+                ward,
+                admission_date,
+
+                heart_rate,
+                spo2,
+                temperature,
+                systolic_bp,
+                diastolic_bp,
+                respiratory_rate,
+
+                hr_valid,
+                spo2_valid,
+                temperature_valid,
+                systolic_valid,
+                diastolic_valid,
+                respiratory_valid,
+
+                status,
+                recorded_at
+
+            FROM new_processed_batch
+        """)
+
+        # --------------------------------------------------
+        # Keep latest 50 processed readings per patient
+        # --------------------------------------------------
+
+        con.execute(f"""
+            DELETE FROM ProcessedPatientVitals
+            WHERE vital_id IN (
+
+                SELECT vital_id
+                FROM (
+
+                    SELECT
+                        vital_id,
+
+                        ROW_NUMBER() OVER (
+                            PARTITION BY patient_id
+                            ORDER BY
+                                recorded_at DESC,
+                                vital_id DESC
+                        ) AS row_number
+
+                    FROM ProcessedPatientVitals
+                )
+
+                WHERE row_number >
+                    {MAX_PROCESSED_READINGS_PER_PATIENT}
+            )
+        """)
 
         total = con.execute("""
             SELECT COUNT(*)
@@ -95,34 +158,35 @@ def save_processed_data(df):
             FROM ProcessedPatientVitals
         """).fetchone()[0]
 
-        print("=" * 60)
-        print("ProcessedPatientVitals created successfully!")
-        print("=" * 60)
-
-        print(f"Total processed records : {total}")
-        print(f"Patients represented    : {patients}")
-
-        print("=" * 60)
+        print(
+            f"Processed batch saved. "
+            f"Stored records: {total}, "
+            f"Patients: {patients}"
+        )
 
     except Exception as e:
 
-        print("Error while saving processed data:")
-        print(e)
+        print(
+            f"Error saving processed data: {e}"
+        )
 
         raise
 
     finally:
 
+        try:
+            con.unregister(
+                "new_processed_batch"
+            )
+        except Exception:
+            pass
+
         con.close()
 
-
-# =====================================================
-# Optional Test
-# =====================================================
 
 if __name__ == "__main__":
 
     print(
-        "This module is intended to be "
-        "used by pyspark_pipeline.preprocessing"
+        "Use this module through "
+        "the MedIntel processing pipeline."
     )
