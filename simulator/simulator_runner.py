@@ -1,60 +1,57 @@
 import duckdb
-import time
 from datetime import datetime
 from pathlib import Path
 
 from simulator.patient_simulator import generate_vitals
 
 
-# --------------------------------------------------
+# =====================================================
 # Configuration
-# --------------------------------------------------
+# =====================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_ROOT / "database" / "medintel.duckdb"
 
-# Generate new patient readings every 5 seconds
-INTERVAL_SECONDS = 5
-
-# Keep only the latest 50 readings for each patient
 MAX_READINGS_PER_PATIENT = 50
 
 
-# --------------------------------------------------
-# Generate and Store Patient Vitals
-# --------------------------------------------------
+# =====================================================
+# Generate ONE Batch of Patient Vitals
+# =====================================================
 
 def generate_and_store_vitals():
 
-    conn = duckdb.connect(str(DB_PATH))
+    con = duckdb.connect(str(DB_PATH))
+
+    new_vital_ids = []
 
     try:
-        # Get all registered patients
-        patients = conn.execute("""
+
+        # Get all patients
+        patients = con.execute("""
             SELECT patient_id
             FROM Patients
             ORDER BY patient_id
         """).fetchall()
 
         if not patients:
-            print("No patients found in Patients table.")
-            return
+            print("No patients found.")
+            return []
 
-        # Get next available vital_id
-        next_vital_id = conn.execute("""
+        # Find next available vital ID
+        next_vital_id = con.execute("""
             SELECT COALESCE(MAX(vital_id), 0) + 1
             FROM VitalSigns
         """).fetchone()[0]
-
-        inserted_count = 0
 
         # Generate one new reading for every patient
         for (patient_id,) in patients:
 
             vitals = generate_vitals()
 
-            # Insert new vital reading
-            conn.execute("""
+            current_vital_id = next_vital_id
+
+            con.execute("""
                 INSERT INTO VitalSigns (
                     vital_id,
                     patient_id,
@@ -68,7 +65,7 @@ def generate_and_store_vitals():
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [
-                next_vital_id,
+                current_vital_id,
                 patient_id,
                 vitals["heart_rate"],
                 vitals["spo2"],
@@ -79,17 +76,19 @@ def generate_and_store_vitals():
                 datetime.now()
             ])
 
-            # --------------------------------------------------
-            # Keep only latest 50 readings for this patient
-            # --------------------------------------------------
+            new_vital_ids.append(current_vital_id)
 
-            conn.execute("""
+            # Keep only latest 50 RAW readings
+            # for this patient
+            con.execute("""
                 DELETE FROM VitalSigns
                 WHERE vital_id IN (
                     SELECT vital_id
                     FROM VitalSigns
                     WHERE patient_id = ?
-                    ORDER BY recorded_at DESC, vital_id DESC
+                    ORDER BY
+                        recorded_at DESC,
+                        vital_id DESC
                     OFFSET ?
                 )
             """, [
@@ -98,66 +97,34 @@ def generate_and_store_vitals():
             ])
 
             next_vital_id += 1
-            inserted_count += 1
 
         print(
-            f"[{datetime.now().strftime('%H:%M:%S')}] "
-            f"Generated vitals for {inserted_count} patients."
+            f"Generated {len(new_vital_ids)} "
+            f"new vital readings."
         )
+
+        return new_vital_ids
 
     except Exception as e:
 
-        print(f"Error while generating patient vitals: {e}")
+        print(
+            f"Vital generation failed: {e}"
+        )
+
+        raise
 
     finally:
 
-        conn.close()
+        con.close()
 
 
-# --------------------------------------------------
-# Continuous Patient Monitoring Simulator
-# --------------------------------------------------
-
-def run_simulator():
-
-    print("=" * 60)
-    print("MedIntel Patient Vital Simulator Started")
-    print("=" * 60)
-
-    print(
-        f"Generating patient vitals every "
-        f"{INTERVAL_SECONDS} seconds."
-    )
-
-    print(
-        f"Keeping latest "
-        f"{MAX_READINGS_PER_PATIENT} readings per patient."
-    )
-
-    print("Press Ctrl+C to stop.")
-    print("=" * 60)
-    print()
-
-    try:
-
-        while True:
-
-            generate_and_store_vitals()
-
-            time.sleep(INTERVAL_SECONDS)
-
-    except KeyboardInterrupt:
-
-        print()
-        print("=" * 60)
-        print("MedIntel Patient Vital Simulator stopped.")
-        print("=" * 60)
-
-
-# --------------------------------------------------
-# Application Entry Point
-# --------------------------------------------------
+# =====================================================
+# Standalone Test
+# =====================================================
 
 if __name__ == "__main__":
 
-    run_simulator()
+    ids = generate_and_store_vitals()
+
+    print("New Vital IDs:")
+    print(ids)
