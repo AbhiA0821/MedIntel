@@ -5,20 +5,10 @@ os.environ["PYSPARK_PYTHON"] = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 from pyspark.sql import SparkSession
-from database.save_processed_data import save_processed_data
-
-
-from pyspark.sql.functions import (
-    col,
-    when,
-    avg,
-    max,
-    min,
-    count
-)
+from pyspark.sql.functions import col, when
 
 from database.connection import get_connection
-from simulator.patient_simulator import generate_vitals
+from database.save_processed_data import save_processed_data
 
 
 # =====================================================
@@ -29,55 +19,65 @@ def create_spark_session():
 
     spark = (
         SparkSession.builder
-        .appName("MedIntel")
-        .master("local[*]")
+        .appName("MedIntelETL")
+        .master("local[2]")
+        .config("spark.driver.memory", "1g")
+        .config("spark.sql.shuffle.partitions", "2")
         .getOrCreate()
     )
+
+    spark.sparkContext.setLogLevel("ERROR")
 
     return spark
 
 
 # =====================================================
-# Read Patients
+# Extract Data From DuckDB
 # =====================================================
 
-def get_all_patients():
+def get_patient_vital_records():
 
     con = get_connection()
 
-    patients = con.execute("""
-        SELECT *
-        FROM Patients
-    """).fetchall()
+    try:
 
-    columns = [desc[0] for desc in con.description]
+        records = con.execute("""
+            SELECT
+                v.vital_id,
+                p.patient_id,
+                p.first_name,
+                p.last_name,
+                p.age,
+                p.gender,
+                p.blood_group,
+                p.ward,
+                p.admission_date,
 
-    con.close()
+                v.heart_rate,
+                v.spo2,
+                v.temperature,
+                v.systolic_bp,
+                v.diastolic_bp,
+                v.respiratory_rate,
+                v.recorded_at
 
-    return patients, columns
+            FROM VitalSigns v
 
+            INNER JOIN Patients p
+                ON v.patient_id = p.patient_id
 
-# =====================================================
-# Generate Records
-# =====================================================
+            ORDER BY v.recorded_at DESC
+        """).fetchall()
 
-def generate_patient_records():
+        columns = [
+            description[0]
+            for description in con.description
+        ]
 
-    patients, columns = get_all_patients()
+        return records, columns
 
-    records = []
-
-    for patient in patients:
-
-        patient_dict = dict(zip(columns, patient))
-
-        vitals = generate_vitals()
-
-        patient_dict.update(vitals)
-
-        records.append(patient_dict)
-
-    return records
+    finally:
+        con.close()
 
 
 # =====================================================
@@ -86,13 +86,21 @@ def generate_patient_records():
 
 def create_dataframe(spark):
 
-    records = generate_patient_records()
+    records, columns = get_patient_vital_records()
 
-    return spark.createDataFrame(records)
+    if not records:
+        return None
+
+    data = [
+        dict(zip(columns, record))
+        for record in records
+    ]
+
+    return spark.createDataFrame(data)
 
 
 # =====================================================
-# Heart Rate Validation
+# Validate Heart Rate
 # =====================================================
 
 def validate_heart_rate(df):
@@ -108,7 +116,7 @@ def validate_heart_rate(df):
 
 
 # =====================================================
-# SPO2 Validation
+# Validate SpO2
 # =====================================================
 
 def validate_spo2(df):
@@ -124,7 +132,7 @@ def validate_spo2(df):
 
 
 # =====================================================
-# Temperature Validation
+# Validate Temperature
 # =====================================================
 
 def validate_temperature(df):
@@ -140,7 +148,7 @@ def validate_temperature(df):
 
 
 # =====================================================
-# Blood Pressure Validation
+# Validate Blood Pressure
 # =====================================================
 
 def validate_blood_pressure(df):
@@ -167,7 +175,7 @@ def validate_blood_pressure(df):
 
 
 # =====================================================
-# Respiratory Rate Validation
+# Validate Respiratory Rate
 # =====================================================
 
 def validate_respiratory_rate(df):
@@ -183,315 +191,138 @@ def validate_respiratory_rate(df):
 
 
 # =====================================================
-# Create Status
+# Temporary Baseline Status
+# =====================================================
+# NOTE:
+# This is NOT the final ML prediction.
+# It is retained only as a temporary baseline while
+# the ML module is being developed.
 # =====================================================
 
 def create_status(df):
 
     return df.withColumn(
-
         "status",
 
-        when(col("spo2") < 90, "Critical")
+        when(
+            col("spo2") < 90,
+            "Critical"
+        )
 
-        .when(col("temperature") > 38.5, "Critical")
+        .when(
+            col("temperature") > 38.5,
+            "Critical"
+        )
 
-        .when(col("heart_rate") > 120, "Warning")
+        .when(
+            col("heart_rate") > 120,
+            "Warning"
+        )
 
-        .when(col("systolic_bp") > 160, "Warning")
+        .when(
+            col("systolic_bp") > 160,
+            "Warning"
+        )
 
-        .when(col("respiratory_rate") > 24, "Warning")
+        .when(
+            col("respiratory_rate") > 24,
+            "Warning"
+        )
 
         .otherwise("Normal")
     )
 
 
 # =====================================================
-# Main
+# Apply Transformations
+# =====================================================
+
+def preprocess_data(df):
+
+    df = validate_heart_rate(df)
+
+    df = validate_spo2(df)
+
+    df = validate_temperature(df)
+
+    df = validate_blood_pressure(df)
+
+    df = validate_respiratory_rate(df)
+
+    df = create_status(df)
+
+    return df
+
+
+# =====================================================
+# Main ETL Pipeline
+# =====================================================
+
+def run_pipeline():
+
+    print("\n" + "=" * 55)
+    print("MEDINTEL PYSPARK ETL STARTED")
+    print("=" * 55)
+
+    spark = create_spark_session()
+
+    try:
+
+        # ---------------------------------------------
+        # EXTRACT
+        # ---------------------------------------------
+
+        print("[1/4] Reading VitalSigns from DuckDB...")
+
+        df = create_dataframe(spark)
+
+        if df is None:
+
+            print("No vital records available.")
+            return
+
+        # ---------------------------------------------
+        # TRANSFORM
+        # ---------------------------------------------
+
+        print("[2/4] Running PySpark preprocessing...")
+
+        df = preprocess_data(df)
+
+        # ---------------------------------------------
+        # LOAD
+        # ---------------------------------------------
+
+        print("[3/4] Saving processed records to DuckDB...")
+
+        save_processed_data(df)
+
+        # ---------------------------------------------
+        # COMPLETE
+        # ---------------------------------------------
+
+        print("[4/4] ETL completed successfully.")
+
+        print("=" * 55)
+        print("MEDINTEL PYSPARK ETL COMPLETED")
+        print("=" * 55)
+
+    except Exception as e:
+
+        print("\nMEDINTEL PYSPARK ETL FAILED")
+        print(f"Error: {e}")
+
+        raise
+
+    finally:
+
+        spark.stop()
+
+
+# =====================================================
+# Application Entry Point
 # =====================================================
 
 if __name__ == "__main__":
 
-    spark = create_spark_session()
-
-    df = create_dataframe(spark)
-
-    # =====================================================
-    # Apply Validations
-    # =====================================================
-
-    df = validate_heart_rate(df)
-    df = validate_spo2(df)
-    df = validate_temperature(df)
-    df = validate_blood_pressure(df)
-    df = validate_respiratory_rate(df)
-
-    # =====================================================
-    # Create Patient Status
-    # =====================================================
-
-    df = create_status(df)
-
-    # =====================================================
-    # Patient Data
-    # =====================================================
-
-    print("\n==============================")
-    print("PATIENT DATA")
-    print("==============================\n")
-
-    df.show(truncate=False)
-
-    # =====================================================
-    # Schema
-    # =====================================================
-
-    print("\n==============================")
-    print("SCHEMA")
-    print("==============================\n")
-
-    df.printSchema()
-
-    # =====================================================
-    # Columns
-    # =====================================================
-
-    print("\n==============================")
-    print("COLUMN NAMES")
-    print("==============================\n")
-
-    print(df.columns)
-
-    # =====================================================
-    # Total Patients
-    # =====================================================
-
-    print("\n==============================")
-    print("TOTAL PATIENTS")
-    print("==============================\n")
-
-    print(df.count())
-
-    # =====================================================
-    # Validation Results
-    # =====================================================
-
-    print("\n==============================")
-    print("VALIDATION RESULTS")
-    print("==============================\n")
-
-    df.select(
-        "patient_id",
-        "heart_rate",
-        "hr_valid",
-        "spo2",
-        "spo2_valid",
-        "temperature",
-        "temperature_valid",
-        "systolic_bp",
-        "systolic_valid",
-        "diastolic_bp",
-        "diastolic_valid",
-        "respiratory_rate",
-        "respiratory_valid"
-    ).show(truncate=False)
-
-    # =====================================================
-    # Patient Status
-    # =====================================================
-
-    print("\n==============================")
-    print("PATIENT STATUS")
-    print("==============================\n")
-
-    df.select(
-        "patient_id",
-        "heart_rate",
-        "spo2",
-        "temperature",
-        "systolic_bp",
-        "diastolic_bp",
-        "respiratory_rate",
-        "status"
-    ).show(truncate=False)
-
-    # =====================================================
-    # Count Patients by Status
-    # =====================================================
-
-    print("\n==============================")
-    print("PATIENT COUNT BY STATUS")
-    print("==============================\n")
-
-    df.groupBy("status").count().show()
-
-    # =====================================================
-    # Critical Patients
-    # =====================================================
-
-    print("\n==============================")
-    print("CRITICAL PATIENTS")
-    print("==============================\n")
-
-    critical_df = df.filter(col("status") == "Critical")
-
-    critical_df.show(truncate=False)
-
-    # =====================================================
-    # Warning Patients
-    # =====================================================
-
-    print("\n==============================")
-    print("WARNING PATIENTS")
-    print("==============================\n")
-
-    warning_df = df.filter(col("status") == "Warning")
-
-    warning_df.show(truncate=False)
-
-    # =====================================================
-    # Normal Patients
-    # =====================================================
-
-    print("\n==============================")
-    print("NORMAL PATIENTS")
-    print("==============================\n")
-
-    normal_df = df.filter(col("status") == "Normal")
-
-    normal_df.show(truncate=False)
-
-    # =====================================================
-    # Average Heart Rate
-    # =====================================================
-
-    print("\n==============================")
-    print("AVERAGE HEART RATE")
-    print("==============================\n")
-
-    df.select(
-        avg("heart_rate").alias("Average Heart Rate")
-    ).show()
-
-    # =====================================================
-    # Average Temperature
-    # =====================================================
-
-    print("\n==============================")
-    print("AVERAGE TEMPERATURE")
-    print("==============================\n")
-
-    df.select(
-        avg("temperature").alias("Average Temperature")
-    ).show()
-
-    # =====================================================
-    # Average SpO2
-    # =====================================================
-
-    print("\n==============================")
-    print("AVERAGE SPO2")
-    print("==============================\n")
-
-    df.select(
-        avg("spo2").alias("Average SPO2")
-    ).show()
-
-    # =====================================================
-    # Maximum Temperature
-    # =====================================================
-
-    print("\n==============================")
-    print("MAXIMUM TEMPERATURE")
-    print("==============================\n")
-
-    df.select(
-        max("temperature").alias("Maximum Temperature")
-    ).show()
-
-    # =====================================================
-    # Minimum SpO2
-    # =====================================================
-
-    print("\n==============================")
-    print("MINIMUM SPO2")
-    print("==============================\n")
-
-    df.select(
-        min("spo2").alias("Minimum SPO2")
-    ).show()
-
-    # =====================================================
-    # Top 10 Highest Heart Rate
-    # =====================================================
-
-    print("\n==============================")
-    print("TOP 10 HEART RATE")
-    print("==============================\n")
-
-    df.orderBy(
-        col("heart_rate").desc()
-    ).show(10, truncate=False)
-
-    # =====================================================
-    # Lowest SPO2
-    # =====================================================
-
-    print("\n==============================")
-    print("LOWEST SPO2")
-    print("==============================\n")
-
-    df.orderBy(
-        col("spo2").asc()
-    ).show(10, truncate=False)
-
-    # =====================================================
-    # Top 5 Critical Patients
-    # =====================================================
-
-    print("\n==============================")
-    print("TOP 5 CRITICAL PATIENTS")
-    print("==============================\n")
-
-    df.filter(
-        col("status") == "Critical"
-    ).orderBy(
-        col("heart_rate").desc()
-    ).show(5, truncate=False)
-
-    # =====================================================
-    # High Heart Rate Count
-    # =====================================================
-
-    print("\n==============================")
-    print("HIGH HEART RATE PATIENTS")
-    print("==============================\n")
-
-    high_hr = df.filter(col("heart_rate") > 120).count()
-
-    print("Patients with Heart Rate > 120 :", high_hr)
-
-    # =====================================================
-    # Low SPO2 Count
-    # =====================================================
-
-    print("\n==============================")
-    print("LOW SPO2 PATIENTS")
-    print("==============================\n")
-
-    low_spo2 = df.filter(col("spo2") < 90).count()
-
-    print("Patients with SPO2 < 90 :", low_spo2)
-
-
-    print("\n==============================")
-    print("SAVING PROCESSED DATA")
-    print("==============================\n")
-
-    save_processed_data(df)
-
-    # =====================================================
-    # Stop Spark
-    # =====================================================
-
-    spark.stop()
+    run_pipeline()
