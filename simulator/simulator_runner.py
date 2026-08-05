@@ -23,11 +23,12 @@ def generate_and_store_vitals():
 
     con = duckdb.connect(str(DB_PATH))
 
-    new_vital_ids = []
-
     try:
 
-        # Get all patients
+        # -------------------------------------------------
+        # Get all active patients
+        # -------------------------------------------------
+
         patients = con.execute("""
             SELECT patient_id
             FROM Patients
@@ -35,23 +36,68 @@ def generate_and_store_vitals():
         """).fetchall()
 
         if not patients:
+
             print("No patients found.")
+
             return []
 
+        # -------------------------------------------------
         # Find next available vital ID
+        # -------------------------------------------------
+
         next_vital_id = con.execute("""
             SELECT COALESCE(MAX(vital_id), 0) + 1
             FROM VitalSigns
         """).fetchone()[0]
 
-        # Generate one new reading for every patient
+        # -------------------------------------------------
+        # Generate complete batch in memory
+        # -------------------------------------------------
+
+        batch = []
+        new_vital_ids = []
+
+        batch_timestamp = datetime.now()
+
         for (patient_id,) in patients:
 
             vitals = generate_vitals()
 
             current_vital_id = next_vital_id
 
-            con.execute("""
+            batch.append(
+                (
+                    current_vital_id,
+                    patient_id,
+                    vitals["heart_rate"],
+                    vitals["spo2"],
+                    vitals["temperature"],
+                    vitals["systolic_bp"],
+                    vitals["diastolic_bp"],
+                    vitals["respiratory_rate"],
+                    batch_timestamp
+                )
+            )
+
+            new_vital_ids.append(
+                current_vital_id
+            )
+
+            next_vital_id += 1
+
+        # -------------------------------------------------
+        # Begin transaction
+        # -------------------------------------------------
+
+        con.execute("BEGIN TRANSACTION")
+
+        try:
+
+            # =============================================
+            # ONE BATCH INSERT
+            # =============================================
+
+            con.executemany("""
                 INSERT INTO VitalSigns (
                     vital_id,
                     patient_id,
@@ -64,39 +110,46 @@ def generate_and_store_vitals():
                     recorded_at
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, [
-                current_vital_id,
-                patient_id,
-                vitals["heart_rate"],
-                vitals["spo2"],
-                vitals["temperature"],
-                vitals["systolic_bp"],
-                vitals["diastolic_bp"],
-                vitals["respiratory_rate"],
-                datetime.now()
-            ])
+            """, batch)
 
-            new_vital_ids.append(current_vital_id)
+            # =============================================
+            # ONE CLEANUP QUERY
+            #
+            # Keep latest 50 readings PER patient.
+            # =============================================
 
-            # Keep only latest 50 RAW readings
-            # for this patient
-            con.execute("""
+            con.execute(f"""
                 DELETE FROM VitalSigns
                 WHERE vital_id IN (
-                    SELECT vital_id
-                    FROM VitalSigns
-                    WHERE patient_id = ?
-                    ORDER BY
-                        recorded_at DESC,
-                        vital_id DESC
-                    OFFSET ?
-                )
-            """, [
-                patient_id,
-                MAX_READINGS_PER_PATIENT
-            ])
 
-            next_vital_id += 1
+                    SELECT vital_id
+                    FROM (
+
+                        SELECT
+                            vital_id,
+
+                            ROW_NUMBER() OVER (
+                                PARTITION BY patient_id
+                                ORDER BY
+                                    recorded_at DESC,
+                                    vital_id DESC
+                            ) AS row_number
+
+                        FROM VitalSigns
+                    )
+
+                    WHERE row_number >
+                        {MAX_READINGS_PER_PATIENT}
+                )
+            """)
+
+            con.execute("COMMIT")
+
+        except Exception:
+
+            con.execute("ROLLBACK")
+
+            raise
 
         print(
             f"Generated {len(new_vital_ids)} "
