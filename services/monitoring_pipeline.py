@@ -37,9 +37,15 @@ def run_monitoring_pipeline():
     print("Press Ctrl+C to stop.")
     print("=" * 65)
 
-    # IMPORTANT:
-    # Spark starts ONCE and stays alive.
+    # Spark starts only ONCE
+    spark_start = time.monotonic()
+
     spark = create_spark_session()
+
+    print(
+        f"PySpark startup time: "
+        f"{time.monotonic() - spark_start:.3f}s"
+    )
 
     cycle_number = 1
 
@@ -60,8 +66,10 @@ def run_monitoring_pipeline():
             print("=" * 65)
 
             # ==========================================
-            # STEP 1 - Generate Raw Vitals
+            # STEP 1 - Generate + Store Raw Vitals
             # ==========================================
+
+            generation_start = time.monotonic()
 
             print(
                 "[1/5] Generating patient vital signs..."
@@ -69,6 +77,16 @@ def run_monitoring_pipeline():
 
             new_vital_ids = (
                 generate_and_store_vitals()
+            )
+
+            generation_time = (
+                time.monotonic() -
+                generation_start
+            )
+
+            print(
+                f"TIMING | Raw generation + DuckDB: "
+                f"{generation_time:.3f}s"
             )
 
             if not new_vital_ids:
@@ -88,6 +106,8 @@ def run_monitoring_pipeline():
                 # STEP 2 - PySpark Preprocessing
                 # ======================================
 
+                preprocessing_start = time.monotonic()
+
                 print(
                     "[2/5] Running PySpark preprocessing..."
                 )
@@ -97,56 +117,81 @@ def run_monitoring_pipeline():
                     new_vital_ids
                 )
 
+                preprocessing_time = (
+                    time.monotonic() -
+                    preprocessing_start
+                )
+
+                print(
+                    f"TIMING | PySpark + processed save: "
+                    f"{preprocessing_time:.3f}s"
+                )
+
                 # ======================================
                 # STEP 3 - ML Prediction
                 # ======================================
+
+                ml_start = time.monotonic()
 
                 print(
                     "[3/5] ML prediction: "
                     "waiting for model integration."
                 )
 
-                # Later:
-                #
-                # predictions = predict(
-                #     processed_df
-                # )
+                ml_time = (
+                    time.monotonic() -
+                    ml_start
+                )
+
+                print(
+                    f"TIMING | ML: "
+                    f"{ml_time:.3f}s"
+                )
 
                 # ======================================
                 # STEP 4 - Recommendation
                 # ======================================
+
+                recommendation_start = time.monotonic()
 
                 print(
                     "[4/5] Recommendation engine: "
                     "waiting for integration."
                 )
 
-                # Later:
-                #
-                # recommendations = (
-                #     generate_recommendations(
-                #         predictions
-                #     )
-                # )
+                recommendation_time = (
+                    time.monotonic() -
+                    recommendation_start
+                )
+
+                print(
+                    f"TIMING | Recommendation: "
+                    f"{recommendation_time:.3f}s"
+                )
 
                 # ======================================
                 # STEP 5 - Alert
                 # ======================================
+
+                alert_start = time.monotonic()
 
                 print(
                     "[5/5] Alert service: "
                     "waiting for integration."
                 )
 
-                # Later:
-                #
-                # send_critical_alerts(
-                #     predictions,
-                #     recommendations
-                # )
+                alert_time = (
+                    time.monotonic() -
+                    alert_start
+                )
+
+                print(
+                    f"TIMING | Alert: "
+                    f"{alert_time:.3f}s"
+                )
 
             # ==========================================
-            # Timing
+            # Total Cycle Timing
             # ==========================================
 
             elapsed = (
@@ -154,9 +199,11 @@ def run_monitoring_pipeline():
                 cycle_start
             )
 
+            print("-" * 65)
+
             print(
-                f"Cycle processing time: "
-                f"{elapsed:.2f} seconds"
+                f"TOTAL CYCLE TIME: "
+                f"{elapsed:.3f}s"
             )
 
             remaining_time = max(
@@ -167,8 +214,13 @@ def run_monitoring_pipeline():
             if remaining_time > 0:
 
                 print(
-                    f"Next cycle in "
-                    f"{remaining_time:.2f} seconds."
+                    f"Waiting: "
+                    f"{remaining_time:.3f}s"
+                )
+
+                print(
+                    "Cycle completed within "
+                    "5-second target."
                 )
 
                 time.sleep(
@@ -178,8 +230,8 @@ def run_monitoring_pipeline():
             else:
 
                 print(
-                    "Processing exceeded the "
-                    "5-second target."
+                    f"TARGET EXCEEDED BY: "
+                    f"{elapsed - MONITORING_INTERVAL_SECONDS:.3f}s"
                 )
 
                 print(
