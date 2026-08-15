@@ -2,7 +2,17 @@ import duckdb
 from datetime import datetime
 from pathlib import Path
 
+import importlib.util
 from simulator.patient_simulator import generate_vitals
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DB_PATH = PROJECT_ROOT / "database" / "medintel.duckdb"
+
+# Load local Kafka producer module without shadowing kafka-python package
+_producer_spec = importlib.util.spec_from_file_location("medintel_kafka_producer", PROJECT_ROOT / "kafka" / "producer.py")
+_producer_mod = importlib.util.module_from_spec(_producer_spec)
+_producer_spec.loader.exec_module(_producer_mod)
+publish_vitals_batch_to_kafka = _producer_mod.publish_vitals_batch_to_kafka
 
 
 # =====================================================
@@ -144,6 +154,9 @@ def generate_and_store_vitals():
             """)
 
             con.execute("COMMIT")
+
+            # Publish generated batch to Kafka topic (medintel-vitals)
+            publish_vitals_batch_to_kafka(batch, topic_name='medintel-vitals')
 
         except Exception:
 
