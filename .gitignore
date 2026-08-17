@@ -17,6 +17,10 @@ env/
 # Environment Variables
 # ==========================
 .env
+.env.*
+*.env
+.env.txt
+!.env.example
 
 # ==========================
 # Jupyter Notebook
@@ -50,19 +54,14 @@ logs/
 *.sqlite3
 
 # ==========================
-# Airflow
-# ==========================
-airflow/logs/
-airflow/airflow.db
-
-# ==========================
 # OS Files
 # ==========================
 .DS_Store
 Thumbs.db
 
 # ==========================
-# Temporary Files
+# Temporary Files & Checkpoints
 # ==========================
 *.tmp
 *.temp
+checkpoints/
