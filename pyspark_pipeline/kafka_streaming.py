@@ -24,6 +24,9 @@ from pyspark.sql.types import (
 )
 
 
+from database.save_streaming_processed_data import save_streaming_processed_data
+
+
 # =====================================================
 # Spark Session Creation
 # =====================================================
@@ -126,7 +129,7 @@ def process_vitals_stream(streaming_df):
 
 
 # =====================================================
-# Micro-Batch Display Handler
+# Micro-Batch Handler (Display + DuckDB Persistence)
 # =====================================================
 
 def handle_micro_batch(batch_df, epoch_id):
@@ -153,6 +156,8 @@ def handle_micro_batch(batch_df, epoch_id):
         "recorded_at"
     ).show(10, truncate=False)
 
+    save_streaming_processed_data(batch_df, epoch_id)
+
 
 # =====================================================
 # Streaming Verification Execution
@@ -160,7 +165,7 @@ def handle_micro_batch(batch_df, epoch_id):
 
 def run_streaming_verification(bootstrap_servers=None, topic_name="medintel-vitals"):
     """
-    Connect to Kafka as a Structured Stream, process available batches, and verify parsing/validation logic.
+    Connect to Kafka as a Structured Stream, process available batches, and persist to DuckDB.
     """
     if bootstrap_servers is None:
         if len(sys.argv) > 1:
@@ -168,9 +173,17 @@ def run_streaming_verification(bootstrap_servers=None, topic_name="medintel-vita
         else:
             bootstrap_servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9094")
 
+    project_root = Path(__file__).resolve().parent.parent
+    checkpoint_dir = os.environ.get(
+        "SPARK_CHECKPOINT_DIR",
+        str(project_root / "checkpoints" / "medintel-vitals")
+    )
+    os.makedirs(checkpoint_dir, exist_ok=True)
+
     print("=" * 70, flush=True)
-    print("MEDINTEL PYSPARK STRUCTURED STREAMING VERIFICATION", flush=True)
+    print("MEDINTEL PYSPARK STRUCTURED STREAMING PIPELINE (KAFKA -> PYSPARK -> DUCKDB)", flush=True)
     print(f"Broker: {bootstrap_servers} | Topic: {topic_name}", flush=True)
+    print(f"Checkpoint: {checkpoint_dir}", flush=True)
     print("=" * 70, flush=True)
 
     spark = create_streaming_spark_session(bootstrap_servers=bootstrap_servers)
@@ -190,6 +203,7 @@ def run_streaming_verification(bootstrap_servers=None, topic_name="medintel-vita
         query = (
             processed_stream_df.writeStream
             .trigger(availableNow=True)
+            .option("checkpointLocation", checkpoint_dir)
             .foreachBatch(handle_micro_batch)
             .start()
         )
