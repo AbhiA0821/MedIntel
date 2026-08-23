@@ -1,67 +1,33 @@
-# ==========================
 # Python
-# ==========================
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-
-# ==========================
-# Virtual Environment
-# ==========================
+*$py.class
 .venv/
-venv/
 env/
-
-# ==========================
-# Environment Variables
-# ==========================
-.env
-.env.*
+venv/
 *.env
 .env.txt
-!.env.example
 
-# ==========================
-# Jupyter Notebook
-# ==========================
-.ipynb_checkpoints/
-
-# ==========================
-# VS Code
-# ==========================
-.vscode/
-
-# ==========================
-# Python Build Files
-# ==========================
-build/
-dist/
-*.egg-info/
-
-# ==========================
-# Logs
-# ==========================
-logs/
-*.log
-
-# ==========================
-# Database Files
-# ==========================
+# Database WAL and DB files
 *.duckdb
-*.db
-*.sqlite
-*.sqlite3
+*.duckdb.wal
+*.duckdb.tmp
+database/*.duckdb
 
-# ==========================
-# OS Files
-# ==========================
+# Data & Models
+data/
+human_vital_signs_dataset_2024.csv
+ml_models/
+
+# Secrets
+secrets/*.json
+!secrets/firebase_service_account.json.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
 .DS_Store
 Thumbs.db
-
-# ==========================
-# Temporary Files & Checkpoints
-# ==========================
-*.tmp
-*.temp
-checkpoints/

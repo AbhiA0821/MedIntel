@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MEDINTEL — Critical Alerts Command View</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Navbar Header -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-icon">M</div>
+        <div>
+          <div style="display: flex; align-items: center;">
+            <span class="brand-title">MEDINTEL</span>
+          </div>
+          <div class="brand-sub">AI Healthcare Monitoring</div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <h1>Critical Alerts Command View</h1>
+        <p>Active Patient Alerts Requiring Immediate Clinical Interventions</p>
+      </div>
+
+      <div class="header-right">
+        <a href="{{ url_for('doctor_dashboard') }}" class="btn-db primary" style="text-decoration:none; margin:0; font-size:11px; font-weight:700;">← Back to Dashboard</a>
+      </div>
+    </header>
+
+    <!-- Main Shell -->
+    <main class="content-area" style="padding: 16px 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:14px;">
+        <h2 style="font-size:14px; font-weight:800; color:#fff;">Active Critical Alerts (<span id="criticalPageCount" class="font-mono" style="color: var(--critical-red);">0</span>)</h2>
+        <span id="criticalPageBadge" class="badge-severity CRITICAL font-mono" style="font-size:11px; padding: 4px 10px;">0 PATIENTS AT RISK</span>
+      </div>
+
+      <!-- Dynamic Grid Rendering ALL Active Critical Alerts -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px;" id="alertsGrid">
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-subtle);">
+          Loading active critical alerts...
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', loadCriticalAlerts);
+
+    async function loadCriticalAlerts() {
+      const grid = document.getElementById('alertsGrid');
+      const countEl = document.getElementById('criticalPageCount');
+      const badgeEl = document.getElementById('criticalPageBadge');
+
+      try {
+        const res = await fetch('/api/v1/live_vitals');
+        if (!res.ok) throw new Error('API request failed');
+        const data = await res.json();
+        const criticals = (data.patients || []).filter(p => p.severity === 'CRITICAL');
+
+        countEl.textContent = criticals.length;
+        badgeEl.textContent = `${criticals.length} PATIENT${criticals.length === 1 ? '' : 'S'} AT RISK`;
+
+        if (criticals.length === 0) {
+          grid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; color: var(--low-green);">
+              <h3>🟢 No Active Critical Alerts</h3>
+              <p style="font-size: 11px; color: var(--text-subtle); margin-top: 4px;">All monitored patient vitals are currently within stable thresholds.</p>
+            </div>
+          `;
+          return;
+        }
+
+        grid.innerHTML = criticals.map(p => {
+          const reasonItems = p.reasons && p.reasons.length > 0 
+            ? p.reasons.map(r => `<li><span class="bullet-dot">•</span> ${r}</li>`).join('')
+            : `<li><span class="bullet-dot">•</span> Hypoxia / Pyrexia</li>`;
+
+          return `
+            <div class="critical-card" style="padding: 14px; margin-bottom: 0;">
+              <div class="critical-header">
+                <div>
+                  <span class="status-dot red"></span>
+                  <strong class="font-mono" style="color: var(--accent-blue); font-size: 13px;">${p.patient_id}</strong>
+                  <span style="font-weight:700; color:#fff; font-size: 13px; margin-left: 6px;">${p.name}</span>
+                </div>
+                <span class="font-mono" style="font-size:10px; color: var(--text-subtle);">${p.last_update || '16:04:31'}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${p.ward} • Room ${p.room_no} • Bed ${p.bed_no}</div>
+              
+              <div class="critical-vitals font-mono" style="font-size: 11px; padding: 6px 10px; margin-top: 6px;">
+                <span class="${p.spo2 < 90 ? 'val-danger' : ''}">SpO₂: ${p.spo2}%</span> •
+                <span class="${p.temperature > 38.5 ? 'val-danger' : ''}">Temp: ${p.temperature}°C</span> •
+                <span class="${p.heart_rate > 120 ? 'val-danger' : ''}">HR: ${p.heart_rate} bpm</span> •
+                <span>BP: ${p.systolic_bp}/${p.diastolic_bp}</span>
+              </div>
+
+              <div class="reason-box" style="margin-top: 8px;">
+                <div class="reason-title">REASON</div>
+                <ul class="reason-bullets">
+                  ${reasonItems}
+                </ul>
+              </div>
+
+              <div class="critical-rec-box" style="margin-top: 8px;">
+                <span style="font-weight:700;">Agent 2 Recommendation:</span> ${p.recommendation || 'Initiate oxygen therapy & urgent clinical consult.'}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Error loading critical alerts:', err);
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--critical-red);">
+            Unable to connect to FastAPI backend. Retrying connection...
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

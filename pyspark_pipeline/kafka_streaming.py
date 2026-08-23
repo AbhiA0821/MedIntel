@@ -1,66 +1,28 @@
-import os
 import sys
-from pathlib import Path
-
-# Configure PySpark executable environment
-os.environ["PYSPARK_PYTHON"] = sys.executable
-os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
-
-# Set HADOOP_HOME for Windows compatibility if winutils is located in project root
-if sys.platform.startswith("win"):
-    project_root = Path(__file__).resolve().parent.parent
-    hadoop_dir = project_root / "hadoop"
-    if hadoop_dir.exists():
-        os.environ["HADOOP_HOME"] = str(hadoop_dir)
-
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, when
+from pyspark.sql.functions import from_json, col, when
 from pyspark.sql.types import (
-    StructType,
-    StructField,
-    IntegerType,
-    DoubleType,
-    StringType
+    StructType, StructField, IntegerType,
+    DoubleType, StringType, TimestampType
 )
 
-
-from database.save_streaming_processed_data import save_streaming_processed_data
-
-
-# =====================================================
-# Spark Session Creation
-# =====================================================
-
-def create_streaming_spark_session(bootstrap_servers=None):
+def create_spark_session(app_name="MedIntel-Kafka-Streaming"):
     """
-    Create a PySpark SparkSession configured with the Kafka Structured Streaming package.
+    Instantiate SparkSession with PySpark Kafka connector dependencies.
     """
-    if bootstrap_servers is None:
-        bootstrap_servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9094")
+    spark = SparkSession.builder \
+        .appName(app_name) \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
+        .config("spark.sql.shuffle.partitions", "2") \
+        .getOrCreate()
 
-    builder = (
-        SparkSession.builder
-        .appName("MedIntelKafkaStructuredStreaming")
-        .master("local[1]")
-        .config("spark.driver.host", "localhost")
-        .config("spark.driver.memory", "1g")
-        .config("spark.sql.shuffle.partitions", "1")
-        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.13:4.2.0")
-        .config("spark.hadoop.fs.permissions.umask-mode", "000")
-    )
-
-    spark = builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
     return spark
 
 
-# =====================================================
-# Schema Definition for medintel-vitals JSON Payload
-# =====================================================
-
-def get_vitals_schema():
+def define_vitals_schema():
     """
-    Define the explicit PySpark schema for JSON events in medintel-vitals topic.
+    Define Schema matching vital event JSON published to Kafka.
     """
     return StructType([
         StructField("vital_id", IntegerType(), True),
@@ -75,147 +37,136 @@ def get_vitals_schema():
     ])
 
 
-# =====================================================
-# DataFrame Transformation & Validation
-# =====================================================
+def read_vitals_kafka_stream(spark, bootstrap_servers="localhost:9094", topic="medintel-vitals"):
+    """
+    Read structured streaming DataFrame from Kafka topic.
+    """
+    return spark.readStream \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", bootstrap_servers) \
+        .option("subscribe", topic) \
+        .option("startingOffsets", "latest") \
+        .load()
+
 
 def process_vitals_stream(streaming_df):
     """
-    Parse Kafka JSON payloads, extract columns, apply validation flags and status classification rules.
+    Parse JSON payload, validate vitals, and classify patient severity status.
     """
-    schema = get_vitals_schema()
+    schema = define_vitals_schema()
 
-    # 1. Parse JSON value payload from Kafka byte stream
-    parsed_df = (
-        streaming_df
-        .selectExpr("CAST(key AS STRING) as kafka_key", "CAST(value AS STRING) as json_value", "timestamp as kafka_timestamp")
-        .select("kafka_key", "kafka_timestamp", from_json(col("json_value"), schema).alias("data"))
-        .select("kafka_key", "kafka_timestamp", "data.*")
+    # 1. Deserialize JSON value
+    parsed_df = streaming_df.selectExpr("CAST(value AS STRING) as json_payload") \
+        .select(from_json(col("json_payload"), schema).alias("data")) \
+        .select("data.*")
+
+    # 2. Convert recorded_at to Timestamp
+    timestamped_df = parsed_df.withColumn(
+        "recorded_at",
+        col("recorded_at").cast(TimestampType())
     )
 
-    # 2. Range Validation Flags
-    validated_df = parsed_df.withColumn(
-        "hr_valid",
-        when((col("heart_rate") >= 40) & (col("heart_rate") <= 180), True).otherwise(False)
-    ).withColumn(
-        "spo2_valid",
-        when((col("spo2") >= 90) & (col("spo2") <= 100), True).otherwise(False)
-    ).withColumn(
-        "temperature_valid",
-        when((col("temperature") >= 35.0) & (col("temperature") <= 42.0), True).otherwise(False)
-    ).withColumn(
-        "systolic_valid",
-        when((col("systolic_bp") >= 90) & (col("systolic_bp") <= 180), True).otherwise(False)
-    ).withColumn(
-        "diastolic_valid",
-        when((col("diastolic_bp") >= 60) & (col("diastolic_bp") <= 120), True).otherwise(False)
-    ).withColumn(
-        "respiratory_valid",
-        when((col("respiratory_rate") >= 8) & (col("respiratory_rate") <= 30), True).otherwise(False)
+    # 3. Data Validation Rules
+    validated_df = timestamped_df.filter(
+        (col("heart_rate") >= 30) & (col("heart_rate") <= 250) &
+        (col("spo2") >= 50) & (col("spo2") <= 100) &
+        (col("temperature") >= 30.0) & (col("temperature") <= 45.0) &
+        (col("systolic_bp") >= 50) & (col("systolic_bp") <= 250) &
+        (col("diastolic_bp") >= 30) & (col("diastolic_bp") <= 150) &
+        (col("respiratory_rate") >= 5) & (col("respiratory_rate") <= 60)
     )
 
-    # 3. Status Classification Rules
+    # 4. Status Classification Rules
     classified_df = validated_df.withColumn(
         "status",
-        when(col("spo2") < 90, "Critical")
-        .when(col("temperature") > 38.5, "Critical")
-        .when(col("heart_rate") > 120, "Warning")
-        .when(col("systolic_bp") > 160, "Warning")
-        .when(col("respiratory_rate") > 24, "Warning")
-        .otherwise("Normal")
+        when(col("spo2") < 90, "CRITICAL")
+        .when(col("temperature") > 38.5, "CRITICAL")
+        .when(col("heart_rate") > 120, "MODERATE")
+        .when(col("systolic_bp") > 160, "MODERATE")
+        .when(col("respiratory_rate") > 24, "MODERATE")
+        .otherwise("LOW")
     )
 
     return classified_df
 
 
-# =====================================================
-# Micro-Batch Handler (Display + DuckDB Persistence)
-# =====================================================
-
-def handle_micro_batch(batch_df, epoch_id):
-    count = batch_df.count()
-    if count == 0:
+def write_stream_to_duckdb_batch(batch_df, batch_id):
+    """
+    Micro-batch writer persisting PySpark streaming output to DuckDB.
+    """
+    if batch_df.isEmpty():
         return
 
-    print(f"\n" + "=" * 70, flush=True)
-    print(f"STREAMING MICRO-BATCH {epoch_id} | Received {count} vital events", flush=True)
-    print("=" * 70, flush=True)
+    import duckdb
+    from database.connection import DB_PATH
 
-    batch_df.select(
-        "vital_id",
-        "patient_id",
-        "heart_rate",
-        "spo2",
-        "temperature",
-        "systolic_bp",
-        "diastolic_bp",
-        "respiratory_rate",
-        "hr_valid",
-        "spo2_valid",
-        "status",
-        "recorded_at"
-    ).show(10, truncate=False)
+    rows = batch_df.collect()
+    print(f"[PYSPARK STREAMING] Processing micro-batch {batch_id} with {len(rows)} records...")
 
-    save_streaming_processed_data(batch_df, epoch_id)
-
-
-# =====================================================
-# Streaming Verification Execution
-# =====================================================
-
-def run_streaming_verification(bootstrap_servers=None, topic_name="medintel-vitals"):
-    """
-    Connect to Kafka as a Structured Stream, process available batches, and persist to DuckDB.
-    """
-    if bootstrap_servers is None:
-        if len(sys.argv) > 1:
-            bootstrap_servers = sys.argv[1]
-        else:
-            bootstrap_servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9094")
-
-    project_root = Path(__file__).resolve().parent.parent
-    checkpoint_dir = os.environ.get(
-        "SPARK_CHECKPOINT_DIR",
-        str(project_root / "checkpoints" / "medintel-vitals")
-    )
-    os.makedirs(checkpoint_dir, exist_ok=True)
-
-    print("=" * 70, flush=True)
-    print("MEDINTEL PYSPARK STRUCTURED STREAMING PIPELINE (KAFKA -> PYSPARK -> DUCKDB)", flush=True)
-    print(f"Broker: {bootstrap_servers} | Topic: {topic_name}", flush=True)
-    print(f"Checkpoint: {checkpoint_dir}", flush=True)
-    print("=" * 70, flush=True)
-
-    spark = create_streaming_spark_session(bootstrap_servers=bootstrap_servers)
-
+    con = duckdb.connect(str(DB_PATH))
     try:
-        raw_stream_df = (
-            spark.readStream
-            .format("kafka")
-            .option("kafka.bootstrap.servers", bootstrap_servers)
-            .option("subscribe", topic_name)
-            .option("startingOffsets", "earliest")
-            .load()
-        )
+        tables = [t[0] for t in con.execute("SHOW TABLES").fetchall()]
+        if "ProcessedPatientVitals" not in tables:
+            con.execute("""
+                CREATE TABLE ProcessedPatientVitals (
+                    vital_id INTEGER PRIMARY KEY,
+                    patient_id INTEGER,
+                    heart_rate INTEGER,
+                    spo2 INTEGER,
+                    temperature DOUBLE,
+                    systolic_bp INTEGER,
+                    diastolic_bp INTEGER,
+                    respiratory_rate INTEGER,
+                    status VARCHAR,
+                    recorded_at TIMESTAMP,
+                    processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
 
-        processed_stream_df = process_vitals_stream(raw_stream_df)
+        records = [
+            (
+                row["vital_id"],
+                row["patient_id"],
+                row["heart_rate"],
+                row["spo2"],
+                row["temperature"],
+                row["systolic_bp"],
+                row["diastolic_bp"],
+                row["respiratory_rate"],
+                row["status"],
+                row["recorded_at"]
+            )
+            for row in rows
+        ]
 
-        query = (
-            processed_stream_df.writeStream
-            .trigger(availableNow=True)
-            .option("checkpointLocation", checkpoint_dir)
-            .foreachBatch(handle_micro_batch)
-            .start()
-        )
-
-        print("[Processing available Kafka stream batches...]", flush=True)
-        query.awaitTermination()
-        print("[Streaming verification complete. Query stopped cleanly.]", flush=True)
-
+        con.executemany("""
+            INSERT OR REPLACE INTO ProcessedPatientVitals (
+                vital_id, patient_id, heart_rate, spo2, temperature,
+                systolic_bp, diastolic_bp, respiratory_rate, status, recorded_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, records)
+        print(f"[PYSPARK STREAMING] Micro-batch {batch_id} successfully persisted {len(records)} records to DuckDB.")
     finally:
-        spark.stop()
+        con.close()
+
+
+def run_kafka_streaming_pipeline(bootstrap_servers="localhost:9094", topic="medintel-vitals"):
+    """
+    Execute end-to-end Structured Streaming pipeline.
+    """
+    spark = create_spark_session()
+    raw_stream = read_vitals_kafka_stream(spark, bootstrap_servers, topic)
+    processed_stream = process_vitals_stream(raw_stream)
+
+    query = processed_stream.writeStream \
+        .foreachBatch(write_stream_to_duckdb_batch) \
+        .outputMode("append") \
+        .start()
+
+    query.awaitTermination()
 
 
 if __name__ == "__main__":
-    run_streaming_verification()
-
+    print("Starting MedIntel PySpark Structured Streaming Pipeline...")
+    run_kafka_streaming_pipeline()

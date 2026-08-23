@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MEDINTEL — AI Healthcare Login Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: radial-gradient(circle at 50% 30%, #161f36 0%, #0b0e17 70%);
+    }
+    .login-box {
+      width: 100%;
+      max-width: 400px;
+      background: #121829;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      padding: 28px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    }
+    .role-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      background: #0b0e17;
+      border: 1px solid #1e293b;
+      padding: 3px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #94a3b8;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .tab-btn.active {
+      background: #3b82f6;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <!-- Brand Logo -->
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div class="brand-icon" style="margin: 0 auto 12px auto; width: 44px; height: 44px; font-size: 20px;">M</div>
+        <h1 style="font-size: 20px; font-weight: 800; color: #fff; letter-spacing: 1px;" class="font-mono">MEDINTEL</h1>
+        <p style="font-size: 12px; color: #94a3b8; margin-top: 2px;">AI Healthcare Monitoring Platform</p>
+      </div>
+
+      <!-- Role Tabs -->
+      <div class="role-tabs">
+        <button type="button" id="tabDoctor" class="tab-btn active" onclick="switchRoleTab('DOCTOR')">Doctor Login</button>
+        <button type="button" id="tabReception" class="tab-btn" onclick="switchRoleTab('RECEPTIONIST')">Receptionist</button>
+      </div>
+
+      {% if error %}
+      <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 10px; border-radius: 8px; font-size: 11px; margin-bottom: 16px;">
+        ⚠️ {{ error }}
+      </div>
+      {% endif %}
+
+      <!-- Login Form -->
+      <form action="{{ url_for('login') }}" method="POST">
+        <input type="hidden" name="role" id="inputRole" value="DOCTOR">
+
+        <div id="fieldDoctor" class="form-group">
+          <label>Doctor Email / Access ID</label>
+          <input type="email" name="email" value="dr.rahul@medintel.org" class="form-control font-mono" placeholder="dr.rahul@medintel.org">
+        </div>
+
+        <div id="fieldReception" class="form-group" style="display: none;">
+          <label>Receptionist Access ID</label>
+          <input type="text" name="username" value="REC001" class="form-control font-mono" placeholder="REC001">
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" value="medintel123" class="form-control font-mono" placeholder="••••••••">
+        </div>
+
+        <button type="submit" class="btn-action btn-start" style="width: 100%; padding: 10px; margin-top: 12px; font-size: 12px;">
+          Sign In to Dashboard
+        </button>
+      </form>
+
+      <div style="text-align: center; margin-top: 20px; border-top: 1px solid #1e293b; padding-top: 12px; font-size: 11px; color: #64748b;">
+        MEDINTEL v2.0.0 • Secured Single-Owner API Gateway
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchRoleTab(role) {
+      document.getElementById('inputRole').value = role;
+      if (role === 'DOCTOR') {
+        document.getElementById('tabDoctor').classList.add('active');
+        document.getElementById('tabReception').classList.remove('active');
+        document.getElementById('fieldDoctor').style.display = 'block';
+        document.getElementById('fieldReception').style.display = 'none';
+      } else {
+        document.getElementById('tabReception').classList.add('active');
+        document.getElementById('tabDoctor').classList.remove('active');
+        document.getElementById('fieldReception').style.display = 'block';
+        document.getElementById('fieldDoctor').style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

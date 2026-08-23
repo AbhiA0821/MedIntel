@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-dark: #0b0e17;
+    --panel-bg: #121829;
+    --panel-bg-alt: #161f36;
+    --border-color: #1e293b;
+    --border-glow: #3b82f633;
+    --accent-blue: #3b82f6;
+    --accent-cyan: #06b6d4;
+    --severity-critical: #ef4444;
+    --severity-moderate: #f97316;
+    --severity-low: #10b981;
+    --analytics-purple: #8b5cf6;
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+    --text-subtle: #64748b;
+  }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0b0e17;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
+
+/* MedIntel Glassmorphic & Panel Utilities */
+.medintel-panel {
+  background: linear-gradient(135deg, #121829 0%, #161f36 100%);
+  border: 1px solid #1e293b;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+}
+
+.medintel-panel-interactive {
+  transition: all 0.2s ease-in-out;
+}
+
+.medintel-panel-interactive:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.15);
+}
+
+.medintel-glow-blue {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
+}
+
+.medintel-glow-critical {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+}
+
+.medintel-table-row {
+  transition: background-color 0.15s ease;
+}
+
+.medintel-table-row:hover {
+  background-color: rgba(30, 41, 59, 0.7);
+}
+
+/* Monospace font helpers */
+.font-mono-num {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
