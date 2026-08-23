@@ -297,38 +297,129 @@ function closeModal(id) {
   if (m) m.style.display = 'none';
 }
 
-function populateDeletePatientDropdown() {
-  const select = document.getElementById('deletePatientSelect');
-  if (!select) return;
+let deletePatientState = {
+  selectedPid: null,
+  matches: []
+};
 
-  if (allPatients.length === 0) {
-    select.innerHTML = '<option value="">No patients available</option>';
-  } else {
-    select.innerHTML = allPatients.map(p => 
-      `<option value="${p.patient_id}">${p.patient_id} — ${p.name} (${p.ward})</option>`
-    ).join('');
+function populateDeletePatientDropdown() {
+  // Reset Delete modal search state when modal opens
+  deletePatientState = { selectedPid: null, matches: [] };
+  const input = document.getElementById('deletePatientSearchInput');
+  const alertEl = document.getElementById('deletePatientAlert');
+  const confirmBox = document.getElementById('deleteConfirmBox');
+  const matchesBox = document.getElementById('deletePatientMatchesBox');
+  const btnSubmit = document.getElementById('btnDeletePatientSubmit');
+
+  if (input) input.value = '';
+  if (alertEl) alertEl.style.display = 'none';
+  if (confirmBox) confirmBox.style.display = 'none';
+  if (matchesBox) matchesBox.style.display = 'none';
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    btnSubmit.style.opacity = '0.5';
+    btnSubmit.style.cursor = 'not-allowed';
   }
-  updateDeleteConfirmationInfo();
 }
 
-function updateDeleteConfirmationInfo() {
-  const select = document.getElementById('deletePatientSelect');
-  if (!select) return;
-  const pid = select.value;
-  const patient = allPatients.find(p => p.patient_id === pid);
+async function searchPatientForDelete() {
+  const alertEl = document.getElementById('deletePatientAlert');
+  const confirmBox = document.getElementById('deleteConfirmBox');
+  const matchesBox = document.getElementById('deletePatientMatchesBox');
+  const matchesSelect = document.getElementById('deletePatientMatchSelect');
+  const btnSubmit = document.getElementById('btnDeletePatientSubmit');
 
-  const titleEl = document.getElementById('deleteConfirmPidName');
-  const wardEl = document.getElementById('deleteConfirmWard');
+  if (alertEl) alertEl.style.display = 'none';
+  if (confirmBox) confirmBox.style.display = 'none';
+  if (matchesBox) matchesBox.style.display = 'none';
+  deletePatientState.selectedPid = null;
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    btnSubmit.style.opacity = '0.5';
+    btnSubmit.style.cursor = 'not-allowed';
+  }
 
-  if (patient) {
-    if (titleEl) titleEl.textContent = `${patient.patient_id} — ${patient.name}`;
-    if (wardEl) wardEl.textContent = `${patient.ward} • Room ${patient.room_no} • Bed ${patient.bed_no}`;
-  } else if (pid) {
-    if (titleEl) titleEl.textContent = `Patient ${pid}`;
-    if (wardEl) wardEl.textContent = `Selected for permanent deletion`;
-  } else {
-    if (titleEl) titleEl.textContent = `No Patient Selected`;
-    if (wardEl) wardEl.textContent = ``;
+  const query = (document.getElementById('deletePatientSearchInput')?.value || '').trim();
+  if (!query) {
+    showModalError(alertEl, 'Please enter a Patient ID or Name to search.');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/v1/patients/search?query=${encodeURIComponent(query)}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      showModalError(alertEl, data.detail || 'Search failed.');
+      return;
+    }
+
+    const matches = data.matches || [];
+    deletePatientState.matches = matches;
+
+    if (matches.length === 0) {
+      showModalError(alertEl, 'Patient not found. Please check the Patient ID or Name.');
+      return;
+    }
+
+    if (matches.length === 1) {
+      const p = matches[0];
+      deletePatientState.selectedPid = p.pid_raw;
+      const titleEl = document.getElementById('deleteConfirmPidName');
+      const wardEl = document.getElementById('deleteConfirmWard');
+      if (titleEl) titleEl.textContent = `${p.patient_id} — ${p.name}`;
+      if (wardEl) wardEl.textContent = `${p.ward} • Room ${p.room_no} • Bed ${p.bed_no}`;
+      if (confirmBox) confirmBox.style.display = 'block';
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.style.opacity = '1';
+        btnSubmit.style.cursor = 'pointer';
+      }
+    } else {
+      // Multiple matches
+      if (matchesSelect) {
+        matchesSelect.innerHTML = `<option value="">-- Select Patient ID --</option>` +
+          matches.map(m => `<option value="${m.pid_raw}">${m.patient_id} — ${m.name} (${m.ward})</option>`).join('');
+      }
+      if (matchesBox) matchesBox.style.display = 'block';
+    }
+  } catch (err) {
+    showModalError(alertEl, `Search error: ${err.message}`);
+  }
+}
+
+function selectMatchPatientForDelete() {
+  const select = document.getElementById('deletePatientMatchSelect');
+  const confirmBox = document.getElementById('deleteConfirmBox');
+  const btnSubmit = document.getElementById('btnDeletePatientSubmit');
+
+  const pidRaw = select?.value;
+  if (!pidRaw) {
+    deletePatientState.selectedPid = null;
+    if (confirmBox) confirmBox.style.display = 'none';
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.style.opacity = '0.5';
+      btnSubmit.style.cursor = 'not-allowed';
+    }
+    return;
+  }
+
+  const pidNum = parseInt(pidRaw, 10);
+  const p = deletePatientState.matches.find(m => m.pid_raw === pidNum);
+
+  if (p) {
+    deletePatientState.selectedPid = p.pid_raw;
+    const titleEl = document.getElementById('deleteConfirmPidName');
+    const wardEl = document.getElementById('deleteConfirmWard');
+    if (titleEl) titleEl.textContent = `${p.patient_id} — ${p.name}`;
+    if (wardEl) wardEl.textContent = `${p.ward} • Room ${p.room_no} • Bed ${p.bed_no}`;
+    if (confirmBox) confirmBox.style.display = 'block';
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.style.opacity = '1';
+      btnSubmit.style.cursor = 'pointer';
+    }
   }
 }
 
@@ -412,11 +503,10 @@ async function handleDeletePatient(e) {
   const alertEl = document.getElementById('deletePatientAlert');
   if (alertEl) alertEl.style.display = 'none';
 
-  const select = document.getElementById('deletePatientSelect');
-  const pid = select?.value;
+  const pid = deletePatientState.selectedPid;
 
   if (!pid) {
-    showModalError(alertEl, 'Please select a valid patient to delete.');
+    showModalError(alertEl, 'Please find and select a patient to delete first.');
     return;
   }
 
@@ -438,7 +528,7 @@ async function handleDeletePatient(e) {
       showModalError(alertEl, msg);
     } else {
       closeModal('modalDeletePatient');
-      alert(`Patient ${pid} deleted successfully.`);
+      alert(`Patient P${pid} deleted successfully.`);
       await refreshLiveVitals();
     }
   } catch (err) {

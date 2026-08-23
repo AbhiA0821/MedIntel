@@ -15,7 +15,8 @@ from database.monitoring_queries import (
     deactivate_doctor_device,
     create_doctor_registration_nonce,
     create_patient,
-    delete_patient
+    delete_patient,
+    search_patients
 )
 from simulator.patient_simulator import generate_and_store_vitals, process_background_alert_pipeline
 
@@ -121,11 +122,39 @@ def read_root():
     }
 
 
+@app.get("/health")
+def health_check_endpoint():
+    """System health check endpoint."""
+    return {
+        "status": "healthy",
+        "service": "MedIntel API",
+        "version": "2.0.0"
+    }
+
+
 @app.get("/api/v1/patients")
 def get_patients_endpoint():
     """Returns all monitored patients."""
     try:
         return get_live_vitals_endpoint()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/patients/search")
+def search_patients_endpoint(query: str):
+    """Searches patients by Patient ID or Name."""
+    try:
+        if not query or not query.strip():
+            raise HTTPException(status_code=400, detail="Search query parameter is required.")
+        matches = search_patients(query.strip())
+        return {
+            "query": query,
+            "count": len(matches),
+            "matches": matches
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

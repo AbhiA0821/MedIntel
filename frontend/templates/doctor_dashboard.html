@@ -559,22 +559,28 @@
 
       <form onsubmit="handleDeletePatient(event)" id="formDeletePatient">
         <div class="form-group">
-          <label style="font-size:10px; color:var(--text-subtle);">Select Patient to Delete</label>
-          <select id="deletePatientSelect" class="form-control font-mono" onchange="updateDeleteConfirmationInfo()">
-            <!-- Dynamically populated -->
-          </select>
+          <label style="font-size:10px; color:var(--text-subtle);">Patient ID or Name <span style="color:var(--critical-red);">*</span></label>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="deletePatientSearchInput" class="form-control font-mono" placeholder="e.g. P150 or Nikita Bajwa" style="flex:1;" onkeyup="if(event.key==='Enter'){event.preventDefault();searchPatientForDelete();}">
+            <button type="button" class="btn-action btn-start" onclick="searchPatientForDelete()" style="padding:4px 10px; font-size:11px; white-space:nowrap;">Find Patient</button>
+          </div>
         </div>
 
-        <div id="deleteConfirmBox" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 10px; border-radius: 8px; margin-top: 10px;">
-          <div style="font-weight: 700; color: #fff; font-size: 12px;" id="deleteConfirmTitle">Delete Patient?</div>
+        <div id="deletePatientMatchesBox" style="display:none; margin-top:8px;">
+          <label style="font-size:10px; color:var(--accent-amber); font-weight:700;">Multiple patients found. Select Patient ID:</label>
+          <select id="deletePatientMatchSelect" class="form-control font-mono" onchange="selectMatchPatientForDelete()"></select>
+        </div>
+
+        <div id="deleteConfirmBox" style="display:none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 10px; border-radius: 8px; margin-top: 10px;">
+          <div style="font-weight: 700; color: #fff; font-size: 12px;" id="deleteConfirmTitle">Patient Found — Confirm Delete</div>
           <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 700; margin-top: 2px;" id="deleteConfirmPidName">P101 — Nikita Bajwa</div>
           <div style="font-size: 10px; color: var(--text-muted);" id="deleteConfirmWard">General Medicine • Room 201 • Bed 1</div>
-          <div style="font-size: 10px; color: var(--critical-red); margin-top: 6px; font-weight: 600;">⚠️ This action cannot be undone.</div>
+          <div style="font-size: 10px; color: var(--critical-red); margin-top: 6px; font-weight: 600;">⚠️ Are you sure you want to delete this patient? This action cannot be undone.</div>
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; border-top:1px solid var(--border-color); padding-top:10px;">
           <button type="button" class="btn-db" onclick="closeModal('modalDeletePatient')">Cancel</button>
-          <button type="submit" class="btn-action btn-stop" id="btnDeletePatientSubmit">Confirm Delete</button>
+          <button type="submit" class="btn-action btn-stop" id="btnDeletePatientSubmit" disabled style="opacity:0.5; cursor:not-allowed;">Confirm Delete</button>
         </div>
       </form>
     </div>

@@ -73,28 +73,14 @@ def logout():
 @app.route('/doctor')
 def doctor_dashboard():
     if 'role' not in session or session['role'] != 'DOCTOR':
-        session['role'] = 'DOCTOR'
-        session['user'] = {
-            'doctor_id': 'DOC001',
-            'doctor_name': 'Dr. Rahul Sharma',
-            'email': 'dr.rahul@medintel.org',
-            'specialty': 'CARDIOLOGY',
-            'role': 'DOCTOR'
-        }
-    return render_template('doctor_dashboard.html', user=session['user'])
+        return redirect(url_for('login'))
+    return render_template('doctor_dashboard.html', user=session.get('user', {}))
 
 @app.route('/receptionist')
 def receptionist_dashboard():
     if 'role' not in session or session['role'] != 'RECEPTIONIST':
-        session['role'] = 'RECEPTIONIST'
-        session['user'] = {
-            'doctor_id': 'REC001',
-            'doctor_name': 'Reception Desk',
-            'email': 'reception@medintel.org',
-            'specialty': 'HOSPITAL ADMISSIONS',
-            'role': 'RECEPTIONIST'
-        }
-    return render_template('receptionist_dashboard.html', user=session['user'])
+        return redirect(url_for('login'))
+    return render_template('receptionist_dashboard.html', user=session.get('user', {}))
 
 @app.route('/critical_alerts')
 def critical_alerts():

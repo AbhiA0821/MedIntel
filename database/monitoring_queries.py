@@ -492,3 +492,129 @@ def delete_patient(patient_id, con=None):
         if close_con:
             con.close()
 
+
+def record_or_update_critical_alert(patient_id, severity, reason, recommendation, priority="HIGH", ward="ICU", room_no="201", bed_no="1", specialty="GENERAL MEDICINE", assigned_doctor="Dr. Amit Verma", con=None):
+    close_con = False
+    if con is None:
+        con = get_connection()
+        close_con = True
+    try:
+        pid = int(patient_id)
+        now_ts = datetime.now()
+        existing_alert = con.execute("SELECT alert_id FROM AlertHistory WHERE patient_id = ? AND active = TRUE", [pid]).fetchone()
+
+        if existing_alert:
+            alert_id = existing_alert[0]
+            con.execute("""
+                UPDATE AlertHistory
+                SET severity = ?, reason = ?, recommendation = ?, priority = ?, ward = ?, room_no = ?, bed_no = ?, specialty = ?, assigned_doctor = ?, created_at = ?
+                WHERE alert_id = ? AND active = TRUE;
+            """, [severity, reason, recommendation, priority, ward, str(room_no), str(bed_no), specialty, assigned_doctor, now_ts, alert_id])
+            return alert_id
+        else:
+            alert_id = f"ALT-P{pid}"
+            exists = con.execute("SELECT alert_id FROM AlertHistory WHERE alert_id = ?", [alert_id]).fetchone()
+            if exists:
+                alert_id = f"ALT-P{pid}-{int(now_ts.timestamp())}"
+
+            con.execute("""
+                INSERT INTO AlertHistory (alert_id, patient_id, severity, reason, recommendation, priority, ward, room_no, bed_no, specialty, assigned_doctor, created_at, notification_status, acknowledged, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SENT', FALSE, TRUE);
+            """, [alert_id, pid, severity, reason, recommendation, priority, ward, str(room_no), str(bed_no), specialty, assigned_doctor, now_ts])
+            return alert_id
+    finally:
+        if close_con:
+            con.close()
+
+
+def sync_active_alerts_with_critical_patients(critical_pids, con=None):
+    close_con = False
+    if con is None:
+        con = get_connection()
+        close_con = True
+    try:
+        crit_set = set(int(pid) for pid in critical_pids)
+        active_alerts = con.execute("SELECT alert_id, patient_id FROM AlertHistory WHERE active = TRUE").fetchall()
+        for a_id, pid in active_alerts:
+            if pid not in crit_set:
+                con.execute("UPDATE AlertHistory SET active = FALSE, resolved_at = ? WHERE alert_id = ?", [datetime.now(), a_id])
+    finally:
+        if close_con:
+            con.close()
+
+
+def search_patients(query, con=None):
+    """
+    Searches patients by Patient ID (exact/numeric/P-prefixed) or Name (case-insensitive partial match).
+    """
+    close_con = False
+    if con is None:
+        con = get_connection()
+        close_con = True
+    try:
+        if not query or not str(query).strip():
+            return []
+
+        q_str = str(query).strip()
+
+        clean_id = None
+        if q_str.upper().startswith("P") and q_str[1:].isdigit():
+            clean_id = int(q_str[1:])
+        elif q_str.isdigit():
+            clean_id = int(q_str)
+
+        if clean_id is not None:
+            res = con.execute("""
+                SELECT patient_id, first_name, last_name, age, gender, blood_group, ward, room_no, bed_no, admission_date
+                FROM Patients
+                WHERE patient_id = ?
+            """, [clean_id]).fetchall()
+            if res:
+                p = res[0]
+                return [{
+                    "patient_id": f"P{p[0]}",
+                    "pid_raw": p[0],
+                    "name": f"{p[1]} {p[2]}",
+                    "first_name": p[1],
+                    "last_name": p[2],
+                    "age": p[3],
+                    "gender": p[4],
+                    "blood_group": p[5],
+                    "ward": p[6],
+                    "room_no": p[7],
+                    "bed_no": p[8],
+                    "admission_date": str(p[9]) if p[9] else ""
+                }]
+
+        search_pattern = f"%{q_str.lower()}%"
+        res = con.execute("""
+            SELECT patient_id, first_name, last_name, age, gender, blood_group, ward, room_no, bed_no, admission_date
+            FROM Patients
+            WHERE LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? OR LOWER(first_name || ' ' || last_name) LIKE ?
+            ORDER BY patient_id;
+        """, [search_pattern, search_pattern, search_pattern]).fetchall()
+
+        results = []
+        for p in res:
+            results.append({
+                "patient_id": f"P{p[0]}",
+                "pid_raw": p[0],
+                "name": f"{p[1]} {p[2]}",
+                "first_name": p[1],
+                "last_name": p[2],
+                "age": p[3],
+                "gender": p[4],
+                "blood_group": p[5],
+                "ward": p[6],
+                "room_no": p[7],
+                "bed_no": p[8],
+                "admission_date": str(p[9]) if p[9] else ""
+            })
+        return results
+    finally:
+        if close_con:
+            con.close()
+
+
+
+
