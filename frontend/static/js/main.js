@@ -277,27 +277,193 @@ function closePatientDrawer() {
 // Database Management Modal Controls
 function openModal(id) {
   const m = document.getElementById(id);
-  if (m) m.style.display = 'flex';
+  if (!m) return;
+  m.style.display = 'flex';
+
+  if (id === 'modalAddPatient') {
+    const alertEl = document.getElementById('addPatientAlert');
+    if (alertEl) alertEl.style.display = 'none';
+    const form = document.getElementById('formAddPatient');
+    if (form) form.reset();
+  } else if (id === 'modalDeletePatient') {
+    const alertEl = document.getElementById('deletePatientAlert');
+    if (alertEl) alertEl.style.display = 'none';
+    populateDeletePatientDropdown();
+  }
 }
+
 function closeModal(id) {
   const m = document.getElementById(id);
   if (m) m.style.display = 'none';
 }
 
-function handleAddPatient(e) {
-  e.preventDefault();
-  alert('Patient management REST endpoint is not active on backend. Gracefully disabled.');
-  closeModal('modalAddPatient');
+function populateDeletePatientDropdown() {
+  const select = document.getElementById('deletePatientSelect');
+  if (!select) return;
+
+  if (allPatients.length === 0) {
+    select.innerHTML = '<option value="">No patients available</option>';
+  } else {
+    select.innerHTML = allPatients.map(p => 
+      `<option value="${p.patient_id}">${p.patient_id} — ${p.name} (${p.ward})</option>`
+    ).join('');
+  }
+  updateDeleteConfirmationInfo();
 }
+
+function updateDeleteConfirmationInfo() {
+  const select = document.getElementById('deletePatientSelect');
+  if (!select) return;
+  const pid = select.value;
+  const patient = allPatients.find(p => p.patient_id === pid);
+
+  const titleEl = document.getElementById('deleteConfirmPidName');
+  const wardEl = document.getElementById('deleteConfirmWard');
+
+  if (patient) {
+    if (titleEl) titleEl.textContent = `${patient.patient_id} — ${patient.name}`;
+    if (wardEl) wardEl.textContent = `${patient.ward} • Room ${patient.room_no} • Bed ${patient.bed_no}`;
+  } else if (pid) {
+    if (titleEl) titleEl.textContent = `Patient ${pid}`;
+    if (wardEl) wardEl.textContent = `Selected for permanent deletion`;
+  } else {
+    if (titleEl) titleEl.textContent = `No Patient Selected`;
+    if (wardEl) wardEl.textContent = ``;
+  }
+}
+
+async function handleAddPatient(e) {
+  e.preventDefault();
+  const alertEl = document.getElementById('addPatientAlert');
+  if (alertEl) alertEl.style.display = 'none';
+
+  const firstName = (document.getElementById('addFirstName')?.value || '').trim();
+  const lastName = (document.getElementById('addLastName')?.value || '').trim();
+  const ageVal = document.getElementById('addAge')?.value;
+  const genderVal = document.getElementById('addGender')?.value || 'Male';
+  const wardVal = document.getElementById('addWard')?.value || 'ICU';
+  const roomVal = (document.getElementById('addRoomNo')?.value || '201').trim();
+  const bedVal = (document.getElementById('addBedNo')?.value || '1').trim();
+  const bloodGroupVal = document.getElementById('addBloodGroup')?.value || 'O+';
+  const customPid = document.getElementById('addCustomPid')?.value;
+
+  // Validation
+  if (!firstName || !lastName) {
+    showModalError(alertEl, 'Patient first name and last name are required.');
+    return;
+  }
+  const ageNum = parseInt(ageVal, 10);
+  if (isNaN(ageNum) || ageNum < 0 || ageNum > 120) {
+    showModalError(alertEl, 'Age must be between 0 and 120.');
+    return;
+  }
+  if (!wardVal) {
+    showModalError(alertEl, 'Ward is required.');
+    return;
+  }
+
+  const payload = {
+    first_name: firstName,
+    last_name: lastName,
+    age: ageNum,
+    gender: genderVal,
+    ward: wardVal,
+    room_no: roomVal,
+    bed_no: bedVal,
+    blood_group: bloodGroupVal,
+    patient_id: customPid ? parseInt(customPid, 10) : null
+  };
+
+  const btnSubmit = document.getElementById('btnAddPatientSubmit');
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Saving...';
+  }
+
+  try {
+    const res = await fetch('/api/v1/patients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const msg = data.detail || data.message || 'Failed to create patient.';
+      showModalError(alertEl, msg);
+    } else {
+      closeModal('modalAddPatient');
+      alert(`Patient ${data.patient_id || ''} added successfully.`);
+      await refreshLiveVitals();
+    }
+  } catch (err) {
+    showModalError(alertEl, `Network error: ${err.message}`);
+  } finally {
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = 'Save Patient';
+    }
+  }
+}
+
+async function handleDeletePatient(e) {
+  e.preventDefault();
+  const alertEl = document.getElementById('deletePatientAlert');
+  if (alertEl) alertEl.style.display = 'none';
+
+  const select = document.getElementById('deletePatientSelect');
+  const pid = select?.value;
+
+  if (!pid) {
+    showModalError(alertEl, 'Please select a valid patient to delete.');
+    return;
+  }
+
+  const btnSubmit = document.getElementById('btnDeletePatientSubmit');
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Deleting...';
+  }
+
+  try {
+    const res = await fetch(`/api/v1/patients/${pid}`, {
+      method: 'DELETE'
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const msg = data.detail || data.message || 'Unable to delete patient.';
+      showModalError(alertEl, msg);
+    } else {
+      closeModal('modalDeletePatient');
+      alert(`Patient ${pid} deleted successfully.`);
+      await refreshLiveVitals();
+    }
+  } catch (err) {
+    showModalError(alertEl, `Network error: ${err.message}`);
+  } finally {
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = 'Confirm Delete';
+    }
+  }
+}
+
 function handleEditPatient(e) {
   e.preventDefault();
-  alert('Patient update REST endpoint is not active on backend. Gracefully disabled.');
+  alert('Patient update REST endpoint is not active on backend.');
   closeModal('modalEditPatient');
 }
-function handleDeletePatient(e) {
-  e.preventDefault();
-  alert('Patient delete REST endpoint is not active on backend. Gracefully disabled.');
-  closeModal('modalDeletePatient');
+
+function showModalError(el, msg) {
+  if (el) {
+    el.textContent = msg;
+    el.style.display = 'block';
+  } else {
+    alert(msg);
+  }
 }
 
 // Doctor Web Push Notification Dispatch

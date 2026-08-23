@@ -26,35 +26,77 @@ except Exception:
 MAX_READINGS_PER_PATIENT = 50
 
 
+DESIGNATED_CRITICAL_IDS = {101, 102, 103, 104, 105, 106, 107, 108}
+PATIENT_VITAL_STATE = {}
+
+
+def _is_designated_critical(patient_id):
+    try:
+        clean_id = int(str(patient_id).upper().replace("P", ""))
+        return clean_id in DESIGNATED_CRITICAL_IDS
+    except (ValueError, TypeError):
+        return False
+
+
 def generate_vitals_for_patient(patient_id):
-    """Generates realistic vital sign values based on clinical distributions."""
-    r = random.random()
+    """Generates realistic vital sign values with gradual bounded changes and 8 designated critical patients."""
+    global PATIENT_VITAL_STATE
 
-    if r < 0.12:
-        # Critical state
-        spo2 = random.randint(75, 89)
-        temp = round(random.uniform(38.6, 40.5), 1)
-        hr = random.randint(110, 160)
-        sys_bp = random.randint(155, 195)
-        dia_bp = random.randint(95, 115)
-        resp = random.randint(25, 38)
-    elif r < 0.35:
-        # Moderate state
-        spo2 = random.randint(90, 94)
-        temp = round(random.uniform(37.6, 38.5), 1)
-        hr = random.randint(100, 125)
-        sys_bp = random.randint(135, 160)
-        dia_bp = random.randint(85, 95)
-        resp = random.randint(20, 25)
+    try:
+        clean_id = int(str(patient_id).upper().replace("P", ""))
+    except (ValueError, TypeError):
+        clean_id = patient_id
+
+    is_critical = _is_designated_critical(patient_id)
+
+    if patient_id not in PATIENT_VITAL_STATE:
+        if is_critical:
+            # Initial critical state for designated patients
+            spo2 = random.randint(82, 88)
+            temp = round(random.uniform(38.7, 39.4), 1)
+            hr = random.randint(115, 145)
+            sys_bp = random.randint(155, 185)
+            dia_bp = random.randint(95, 110)
+            resp = random.randint(25, 34)
+        else:
+            # Initial normal/moderate state for other patients
+            if isinstance(clean_id, int) and clean_id % 5 == 0:
+                # Moderate baseline for subset of normal patients
+                spo2 = random.randint(92, 95)
+                temp = round(random.uniform(37.4, 38.0), 1)
+                hr = random.randint(95, 115)
+                sys_bp = random.randint(130, 150)
+                dia_bp = random.randint(82, 92)
+                resp = random.randint(19, 23)
+            else:
+                # Normal baseline
+                spo2 = random.randint(96, 99)
+                temp = round(random.uniform(36.6, 37.3), 1)
+                hr = random.randint(68, 88)
+                sys_bp = random.randint(114, 128)
+                dia_bp = random.randint(72, 84)
+                resp = random.randint(12, 17)
     else:
-        # Normal state
-        spo2 = random.randint(95, 100)
-        temp = round(random.uniform(36.5, 37.5), 1)
-        hr = random.randint(60, 95)
-        sys_bp = random.randint(110, 130)
-        dia_bp = random.randint(70, 85)
-        resp = random.randint(12, 18)
+        prev_hr, prev_spo2, prev_temp, prev_sys_bp, prev_dia_bp, prev_resp = PATIENT_VITAL_STATE[patient_id]
 
+        if is_critical:
+            # Gradual bounded changes for Critical patients (staying strictly Critical)
+            spo2 = max(78, min(88, prev_spo2 + random.choice([-1, 0, 1])))
+            temp = round(max(38.7, min(40.0, prev_temp + random.choice([-0.1, 0.0, 0.1]))), 1)
+            hr = max(110, min(160, prev_hr + random.choice([-2, -1, 0, 1, 2])))
+            sys_bp = max(150, min(190, prev_sys_bp + random.choice([-2, -1, 0, 1, 2])))
+            dia_bp = max(90, min(115, prev_dia_bp + random.choice([-1, 0, 1])))
+            resp = max(24, min(36, prev_resp + random.choice([-1, 0, 1])))
+        else:
+            # Gradual bounded changes for Non-Critical patients (strictly avoiding Critical thresholds)
+            spo2 = max(92, min(100, prev_spo2 + random.choice([-1, 0, 1])))
+            temp = round(max(36.3, min(38.2, prev_temp + random.choice([-0.1, 0.0, 0.1]))), 1)
+            hr = max(60, min(118, prev_hr + random.choice([-2, -1, 0, 1, 2])))
+            sys_bp = max(105, min(155, prev_sys_bp + random.choice([-2, -1, 0, 1, 2])))
+            dia_bp = max(65, min(92, prev_dia_bp + random.choice([-1, 0, 1])))
+            resp = max(12, min(23, prev_resp + random.choice([-1, 0, 1])))
+
+    PATIENT_VITAL_STATE[patient_id] = (hr, spo2, temp, sys_bp, dia_bp, resp)
     return hr, spo2, temp, sys_bp, dia_bp, resp
 
 

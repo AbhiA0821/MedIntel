@@ -13,7 +13,9 @@ from database.monitoring_queries import (
     set_live_update_interval,
     get_registered_doctor_devices,
     deactivate_doctor_device,
-    create_doctor_registration_nonce
+    create_doctor_registration_nonce,
+    create_patient,
+    delete_patient
 )
 from simulator.patient_simulator import generate_and_store_vitals, process_background_alert_pipeline
 
@@ -98,6 +100,18 @@ class CreateNonceRequest(BaseModel):
     doctor_id: str
 
 
+class PatientCreateRequest(BaseModel):
+    first_name: str
+    last_name: str
+    age: int
+    gender: str
+    ward: str
+    room_no: str = "201"
+    bed_no: str = "1"
+    blood_group: str = "O+"
+    patient_id: int | None = None
+
+
 @app.get("/")
 def read_root():
     return {
@@ -105,6 +119,73 @@ def read_root():
         "status": "ONLINE",
         "docs": "/docs"
     }
+
+
+@app.get("/api/v1/patients")
+def get_patients_endpoint():
+    """Returns all monitored patients."""
+    try:
+        return get_live_vitals_endpoint()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/patients")
+def create_patient_endpoint(req: PatientCreateRequest):
+    """Creates a new patient record in DuckDB database."""
+    try:
+        if not req.first_name or not req.first_name.strip():
+            raise HTTPException(status_code=400, detail="Patient first name is required.")
+        if not req.last_name or not req.last_name.strip():
+            raise HTTPException(status_code=400, detail="Patient last name is required.")
+        if req.age < 0 or req.age > 120:
+            raise HTTPException(status_code=400, detail="Age must be between 0 and 120.")
+        if not req.ward or not req.ward.strip():
+            raise HTTPException(status_code=400, detail="Ward is required.")
+
+        res = create_patient(
+            first_name=req.first_name.strip(),
+            last_name=req.last_name.strip(),
+            age=req.age,
+            gender=req.gender.strip(),
+            ward=req.ward.strip(),
+            room_no=req.room_no.strip(),
+            bed_no=req.bed_no.strip(),
+            blood_group=req.blood_group.strip(),
+            patient_id=req.patient_id
+        )
+        return {
+            "status": "SUCCESS",
+            "message": "Patient added successfully.",
+            "patient_id": f"P{res['patient_id']}",
+            "pid_raw": res['patient_id'],
+            "patient": res
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/v1/patients/{patient_id}")
+def delete_patient_endpoint(patient_id: str):
+    """Deletes a patient record from DuckDB database."""
+    try:
+        clean_id = int(str(patient_id).upper().replace("P", ""))
+        delete_patient(clean_id)
+        return {
+            "status": "SUCCESS",
+            "message": f"Patient P{clean_id} deleted successfully.",
+            "patient_id": f"P{clean_id}"
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/v1/simulator/status")

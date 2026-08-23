@@ -444,14 +444,86 @@
 
   <!-- Database Modals -->
   <div id="modalAddPatient" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-      <h3 style="color:#fff; margin-bottom:12px;">+ Add New Patient</h3>
-      <form onsubmit="handleAddPatient(event)">
-        <div class="form-group"><label>Name</label><input type="text" class="form-control" required placeholder="Patient Name"></div>
-        <div class="form-group"><label>Ward</label><select class="form-control"><option>ICU</option><option>Cardiology</option></select></div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+    <div class="modal-content" style="max-width: 500px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:8px; margin-bottom:12px;">
+        <h3 style="color:#fff; font-size:14px; font-weight:700; margin:0;">+ Add New Patient</h3>
+        <button type="button" onclick="closeModal('modalAddPatient')" style="background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer;">✕</button>
+      </div>
+
+      <div id="addPatientAlert" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; margin-bottom:10px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:var(--critical-red);"></div>
+
+      <form onsubmit="handleAddPatient(event)" id="formAddPatient">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-subtle);">First Name <span style="color:var(--critical-red);">*</span></label>
+            <input type="text" id="addFirstName" class="form-control" required placeholder="First Name">
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-subtle);">Last Name <span style="color:var(--critical-red);">*</span></label>
+            <input type="text" id="addLastName" class="form-control" required placeholder="Last Name">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-subtle);">Age <span style="color:var(--critical-red);">*</span></label>
+            <input type="number" id="addAge" class="form-control font-mono" min="0" max="120" required placeholder="Age (0-120)">
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-subtle);">Gender <span style="color:var(--critical-red);">*</span></label>
+            <select id="addGender" class="form-control">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-subtle);">Ward <span style="color:var(--critical-red);">*</span></label>
+            <select id="addWard" class="form-control">
+              <option value="ICU">ICU</option>
+              <option value="Cardiology">Cardiology</option>
+              <option value="General Medicine">General Medicine</option>
+              <option value="Neurology">Neurology</option>
+              <option value="Pediatrics">Pediatrics</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-subtle);">Blood Group</label>
+            <select id="addBloodGroup" class="form-control">
+              <option value="O+">O+</option>
+              <option value="A+">A+</option>
+              <option value="B+">B+</option>
+              <option value="AB+">AB+</option>
+              <option value="O-">O-</option>
+              <option value="A-">A-</option>
+              <option value="B-">B-</option>
+              <option value="AB-">AB-</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-subtle);">Room Number</label>
+            <input type="text" id="addRoomNo" class="form-control font-mono" placeholder="e.g. 201" value="201">
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-subtle);">Bed Number</label>
+            <input type="text" id="addBedNo" class="form-control font-mono" placeholder="e.g. 1" value="1">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:8px;">
+          <label style="font-size:10px; color:var(--text-subtle);">Custom Patient ID <span style="color:var(--text-subtle);">(Optional, e.g. 201)</span></label>
+          <input type="number" id="addCustomPid" class="form-control font-mono" placeholder="Auto-generated if empty">
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; border-top:1px solid var(--border-color); padding-top:10px;">
           <button type="button" class="btn-db" onclick="closeModal('modalAddPatient')">Cancel</button>
-          <button type="submit" class="btn-action btn-start">Save</button>
+          <button type="submit" class="btn-action btn-start" id="btnAddPatientSubmit">Save Patient</button>
         </div>
       </form>
     </div>
@@ -471,13 +543,32 @@
   </div>
 
   <div id="modalDeletePatient" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-      <h3 style="color:#fff; margin-bottom:12px;">Delete Patient</h3>
-      <form onsubmit="handleDeletePatient(event)">
-        <div class="form-group"><label>Select Patient</label><select class="form-control"><option>P101 - Nikita Bajwa</option></select></div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+    <div class="modal-content" style="max-width: 440px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:8px; margin-bottom:12px;">
+        <h3 style="color:var(--critical-red); font-size:14px; font-weight:700; margin:0;">🗑️ Delete Patient Record</h3>
+        <button type="button" onclick="closeModal('modalDeletePatient')" style="background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer;">✕</button>
+      </div>
+
+      <div id="deletePatientAlert" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; margin-bottom:10px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:var(--critical-red);"></div>
+
+      <form onsubmit="handleDeletePatient(event)" id="formDeletePatient">
+        <div class="form-group">
+          <label style="font-size:10px; color:var(--text-subtle);">Select Patient to Delete</label>
+          <select id="deletePatientSelect" class="form-control font-mono" onchange="updateDeleteConfirmationInfo()">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+
+        <div id="deleteConfirmBox" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 10px; border-radius: 8px; margin-top: 10px;">
+          <div style="font-weight: 700; color: #fff; font-size: 12px;" id="deleteConfirmTitle">Delete Patient?</div>
+          <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 700; margin-top: 2px;" id="deleteConfirmPidName">P101 — Nikita Bajwa</div>
+          <div style="font-size: 10px; color: var(--text-muted);" id="deleteConfirmWard">General Medicine • Room 201 • Bed 1</div>
+          <div style="font-size: 10px; color: var(--critical-red); margin-top: 6px; font-weight: 600;">⚠️ This action cannot be undone.</div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; border-top:1px solid var(--border-color); padding-top:10px;">
           <button type="button" class="btn-db" onclick="closeModal('modalDeletePatient')">Cancel</button>
-          <button type="submit" class="btn-action btn-stop">Delete</button>
+          <button type="submit" class="btn-action btn-stop" id="btnDeletePatientSubmit">Confirm Delete</button>
         </div>
       </form>
     </div>

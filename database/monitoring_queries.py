@@ -424,3 +424,71 @@ def get_live_monitoring_state(con=None):
     finally:
         if close_con:
             con.close()
+
+
+def create_patient(first_name, last_name, age, gender, ward, room_no="201", bed_no="1", blood_group="O+", patient_id=None, con=None):
+    close_con = False
+    if con is None:
+        con = get_connection()
+        close_con = True
+    try:
+        if patient_id is not None:
+            pid = int(patient_id)
+            existing = con.execute("SELECT patient_id FROM Patients WHERE patient_id = ?", [pid]).fetchone()
+            if existing:
+                raise ValueError(f"Patient ID P{pid} already exists.")
+        else:
+            max_pid = con.execute("SELECT COALESCE(MAX(patient_id), 100) FROM Patients").fetchone()[0]
+            pid = max_pid + 1
+
+        adm_date = datetime.now().date()
+        con.execute("""
+            INSERT INTO Patients (patient_id, first_name, last_name, age, gender, blood_group, ward, room_no, bed_no, admission_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, [pid, first_name, last_name, age, gender, blood_group, ward, str(room_no), str(bed_no), adm_date])
+
+        max_v_id = con.execute("SELECT COALESCE(MAX(vital_id), 0) FROM VitalSigns").fetchone()[0]
+        v_id = max_v_id + 1
+        now_ts = datetime.now()
+        con.execute("""
+            INSERT INTO VitalSigns (vital_id, patient_id, heart_rate, spo2, temperature, systolic_bp, diastolic_bp, respiratory_rate, recorded_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, [v_id, pid, 72, 98, 36.8, 120, 80, 16, now_ts])
+
+        return {
+            "patient_id": pid,
+            "first_name": first_name,
+            "last_name": last_name,
+            "age": age,
+            "gender": gender,
+            "blood_group": blood_group,
+            "ward": ward,
+            "room_no": room_no,
+            "bed_no": bed_no,
+            "admission_date": str(adm_date)
+        }
+    finally:
+        if close_con:
+            con.close()
+
+
+def delete_patient(patient_id, con=None):
+    close_con = False
+    if con is None:
+        con = get_connection()
+        close_con = True
+    try:
+        pid = int(patient_id)
+        existing = con.execute("SELECT patient_id FROM Patients WHERE patient_id = ?", [pid]).fetchone()
+        if not existing:
+            raise ValueError(f"Patient P{pid} not found.")
+
+        con.execute("DELETE FROM VitalSigns WHERE patient_id = ?", [pid])
+        con.execute("DELETE FROM AlertHistory WHERE patient_id = ?", [pid])
+        con.execute("DELETE FROM Patients WHERE patient_id = ?", [pid])
+
+        return True
+    finally:
+        if close_con:
+            con.close()
+
