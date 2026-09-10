@@ -26,8 +26,8 @@
       <div class="header-center">
         <span style="font-size: 16px; cursor: pointer; color: var(--text-muted);">≡</span>
         <div>
-          <h1>Live Patient Monitoring Dashboard</h1>
-          <p>Real-time monitoring of patient vitals and hospital operations</p>
+          <h1>Doctor Clinical Command Dashboard</h1>
+          <p>Real-time Critical Patient Monitoring & Clinical Response Center</p>
         </div>
       </div>
 
@@ -66,7 +66,7 @@
 
     <!-- Main Shell -->
     <div class="main-layout">
-      <!-- Left Sidebar (Matching Reference Screenshot) -->
+      <!-- Left Sidebar -->
       <aside class="sidebar">
         <div class="sidebar-top">
           <!-- NAVIGATION -->
@@ -74,57 +74,15 @@
             <div class="section-label">NAVIGATION</div>
             <nav class="nav-menu">
               <a href="{{ url_for('doctor_dashboard') }}" class="nav-item active">📊 Dashboard</a>
-              <a href="#patientTableBody" class="nav-item">👥 Live Patients</a>
+              <a href="#criticalPatientsContainer" class="nav-item">🚨 Critical Patients</a>
               <a href="{{ url_for('critical_alerts') }}" class="nav-item">🚨 Critical Alerts</a>
-              <a href="#patientTableBody" class="nav-item">📁 Patient Directory</a>
-              <a href="#analyticsGrid" class="nav-item">📈 Analytics</a>
             </nav>
           </div>
 
-          <!-- SIMULATION CONTROL -->
+          <!-- DATA CONTROLS -->
           <div class="medintel-panel">
-            <div class="section-label">SIMULATION CONTROL</div>
-            <div class="sim-header">
-              <span style="font-size: 10px; color: var(--text-subtle);">Status</span>
-              <span class="sim-status-pill stopped" id="simStatusPill">
-                <span class="status-dot red"></span> STOPPED
-              </span>
-            </div>
-            <div style="font-size: 9px; color: var(--text-subtle); display: flex; justify-content: space-between; margin-bottom: 6px;" class="font-mono">
-              <span>Last update:</span>
-              <span style="color:#fff;" id="sidebarLastUpdate">16:04:31</span>
-            </div>
-            <div class="btn-grid">
-              <button type="button" class="btn-action btn-start" id="btnStartSim" onclick="startSimulator()">▶ START SIMULATOR</button>
-              <button type="button" class="btn-action btn-stop" id="btnStopSim" onclick="stopSimulator()">■ STOP SIMULATOR</button>
-            </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 10px;">
-              <span style="color: var(--text-muted);">Update Interval</span>
-              <select onchange="changeInterval(this.value)" class="filter-select font-mono" style="padding: 3px 6px; font-size: 9.5px;">
-                <option value="1">1 sec</option>
-                <option value="3" selected>3 sec</option>
-                <option value="5">5 sec</option>
-                <option value="10">10 sec</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- DATABASE MANAGEMENT -->
-          <div class="medintel-panel">
-            <div class="section-label">DATABASE MANAGEMENT</div>
-            <button type="button" class="btn-db primary" onclick="openModal('modalAddPatient')">+ Add Patient</button>
-            <button type="button" class="btn-db" onclick="openModal('modalEditPatient')">✏️ Edit Patient</button>
-            <button type="button" class="btn-db" onclick="openModal('modalDeletePatient')">🗑️ Delete Patient</button>
+            <div class="section-label">DATA CONTROLS</div>
             <button type="button" class="btn-db" onclick="refreshLiveVitals()">🔄 Refresh Data</button>
-          </div>
-
-          <!-- PATIENT DIRECTORY -->
-          <div class="medintel-panel">
-            <div class="section-label">PATIENT DIRECTORY</div>
-            <div style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 2px 0;">
-              <span>👥 Inpatient Directory</span>
-              <span>›</span>
-            </div>
           </div>
 
           <!-- SYSTEM OVERVIEW -->
@@ -134,13 +92,53 @@
               <div style="font-size: 20px;">🛡️</div>
               <div>
                 <div class="system-title">HEALTHY</div>
-                <div class="system-sub">All systems are operating normally</div>
+                <div class="system-sub">All systems operating normally</div>
               </div>
             </div>
             <div class="sys-pills">
               <div class="sys-pill">API 🟢</div>
               <div class="sys-pill">DB 🟢</div>
               <div class="sys-pill">Kafka 🟢</div>
+            </div>
+          </div>
+
+          <!-- COMPACT SIDEBAR ANALYTICS -->
+          <!-- 1. SEVERITY DISTRIBUTION -->
+          <div class="medintel-panel">
+            <div class="section-label">SEVERITY DISTRIBUTION</div>
+            <div style="font-size: 10px; line-height: 1.6;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--critical-red); font-weight: 600;">🔴 Critical</span>
+                <span class="font-mono" style="color: var(--critical-red); font-weight: 700;" id="sideSevCritical">8 (8.0%)</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px;">
+                <span style="color: var(--moderate-orange); font-weight: 600;">🟠 Moderate</span>
+                <span class="font-mono" style="color: var(--moderate-orange); font-weight: 700;" id="sideSevModerate">7 (7.0%)</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px;">
+                <span style="color: var(--low-green); font-weight: 600;">🟢 Low Risk</span>
+                <span class="font-mono" style="color: var(--low-green); font-weight: 700;" id="sideSevLow">85 (85.0%)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. WARD DISTRIBUTION -->
+          <div class="medintel-panel">
+            <div class="section-label">WARD DISTRIBUTION</div>
+            <div id="sideWardContainer" style="font-size: 9.5px; line-height: 1.5;">
+              <div style="text-align: center; color: var(--text-subtle); padding: 4px;">Loading ward stats...</div>
+            </div>
+          </div>
+
+          <!-- 3. VITALS SUMMARY (AVG) -->
+          <div class="medintel-panel">
+            <div class="section-label">VITALS SUMMARY (AVG)</div>
+            <div style="font-size: 9.5px; line-height: 1.6;">
+              <div style="display: flex; justify-content: space-between;"><span>❤️ Heart Rate</span><span class="font-mono" style="font-weight: 700;" id="sideAvgHr">84 bpm</span></div>
+              <div style="display: flex; justify-content: space-between;"><span>🩸 SpO₂</span><span class="font-mono" style="font-weight: 700;" id="sideAvgSpo2">95%</span></div>
+              <div style="display: flex; justify-content: space-between;"><span>🌡️ Temperature</span><span class="font-mono" style="font-weight: 700;" id="sideAvgTemp">37.1 °C</span></div>
+              <div style="display: flex; justify-content: space-between;"><span>🩺 Blood Pressure</span><span class="font-mono" style="font-weight: 700;" id="sideAvgBp">132/84 mmHg</span></div>
+              <div style="display: flex; justify-content: space-between;"><span>🫁 Respiratory Rate</span><span class="font-mono" style="font-weight: 700;" id="sideAvgRr">18 /min</span></div>
             </div>
           </div>
         </div>
@@ -162,30 +160,30 @@
 
       <!-- Dashboard Main Viewport Content -->
       <main class="content-area">
-        <!-- 6 KPI Summary Cards (Exactly Matching Reference Screenshot) -->
+        <!-- 5 KPI Summary Cards -->
         <div class="kpi-grid">
           <div class="medintel-panel kpi-card">
-            <div class="kpi-icon blue">👥</div>
+            <div class="kpi-icon red">💓</div>
             <div>
-              <div class="kpi-label">TOTAL PATIENTS</div>
-              <div class="kpi-val" id="kpiTotalPatients">100</div>
-              <div class="kpi-sub">Registered Patients</div>
+              <div class="kpi-label">CRITICAL PATIENTS</div>
+              <div class="kpi-val" style="color: var(--critical-red);" id="kpiCriticalCount">8</div>
+              <div class="kpi-sub" style="color: var(--critical-red);">Immediate Action Required</div>
             </div>
           </div>
 
           <div class="medintel-panel kpi-card">
-            <div class="kpi-icon red">💓</div>
+            <div class="kpi-icon blue">👥</div>
             <div>
-              <div class="kpi-label">CRITICAL</div>
-              <div class="kpi-val" style="color: var(--critical-red);" id="kpiCriticalCount">8</div>
-              <div class="kpi-sub" style="color: var(--critical-red);">8.0% of total</div>
+              <div class="kpi-label">TOTAL MONITORED</div>
+              <div class="kpi-val" id="kpiTotalPatients">100</div>
+              <div class="kpi-sub">Total Hospital Patients</div>
             </div>
           </div>
 
           <div class="medintel-panel kpi-card">
             <div class="kpi-icon orange">⚡</div>
             <div>
-              <div class="kpi-label">MODERATE</div>
+              <div class="kpi-label">MODERATE RISK</div>
               <div class="kpi-val" style="color: var(--moderate-orange);" id="kpiModerateCount">7</div>
               <div class="kpi-sub" style="color: var(--moderate-orange);">7.0% of total</div>
             </div>
@@ -201,15 +199,6 @@
           </div>
 
           <div class="medintel-panel kpi-card">
-            <div class="kpi-icon purple">💾</div>
-            <div>
-              <div class="kpi-label">TOTAL RECORDS</div>
-              <div class="kpi-val" style="color: var(--purple-accent);" id="kpiTotalRecords">5,043</div>
-              <div class="kpi-sub">Total Vital Records</div>
-            </div>
-          </div>
-
-          <div class="medintel-panel kpi-card">
             <div class="kpi-icon cyan">⏱️</div>
             <div>
               <div class="kpi-label">LAST UPDATE</div>
@@ -219,180 +208,36 @@
           </div>
         </div>
 
-        <!-- Center Monitoring Layout (72% Left Patient Table, 28% Right Critical Panel) -->
-        <div class="dashboard-center">
-          <!-- Monitored Patient Dataset Table -->
-          <div class="medintel-panel">
-            <div class="table-header-bar">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="color: var(--low-green);">👥</span>
-                <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Live Monitored Patient Dataset <span style="font-size: 10px; color: var(--accent-cyan); font-weight: 400;">(Latest Vitals)</span></h2>
-              </div>
-              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <input type="text" id="searchInput" class="search-input font-mono" placeholder="🔍 Search by Patient ID or Name...">
-                <select id="wardFilter" class="filter-select">
-                  <option value="All Wards">All Wards</option>
-                  <option value="ICU">ICU</option>
-                  <option value="Cardiology">Cardiology</option>
-                  <option value="General Medicine">General Medicine</option>
-                  <option value="Neurology">Neurology</option>
-                  <option value="Pediatrics">Pediatrics</option>
-                </select>
-                <select id="severityFilter" class="filter-select">
-                  <option value="All Severity">All Severity</option>
-                  <option value="CRITICAL">Critical</option>
-                  <option value="MODERATE">Moderate</option>
-                  <option value="LOW">Low Risk</option>
-                </select>
+        <!-- Critical Patients Monitoring Command View (Centerpiece) -->
+        <div id="criticalPatientsContainer" class="medintel-panel" style="margin-bottom: 16px;">
+          <div class="table-header-bar" style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 18px;">🚨</span>
+              <div>
+                <h2 style="font-size: 14px; font-weight: 800; color: #fff;">
+                  Active Critical Patients Stream (<span id="criticalHeaderCount" class="font-mono" style="color: var(--critical-red);">8</span>)
+                </h2>
+                <div style="font-size: 10px; color: var(--text-muted);">
+                  Patients requiring immediate clinical response & intervention
+                </div>
               </div>
             </div>
-
-            <div class="table-responsive">
-              <table class="patient-table">
-                <thead>
-                  <tr>
-                    <th>Patient ID</th>
-                    <th>Name</th>
-                    <th>Age</th>
-                    <th>Gender</th>
-                    <th>Ward</th>
-                    <th>Room</th>
-                    <th>Bed</th>
-                    <th>HR (bpm)</th>
-                    <th>SpO₂ (%)</th>
-                    <th>Temp (°C)</th>
-                    <th>BP (mmHg)</th>
-                    <th>RR (/min)</th>
-                    <th style="text-align: center;">Severity</th>
-                    <th style="text-align: center;">Trend</th>
-                    <th style="text-align: right;">Last Update</th>
-                  </tr>
-                </thead>
-                <tbody id="patientTableBody">
-                  <!-- Populated by main.js -->
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Table Pagination Bar -->
-            <div class="pagination-bar">
-              <div>Showing 1 to 10 of 100 patients</div>
-              <div style="display: flex; gap: 3px;">
-                <button type="button" class="role-btn" style="padding: 2px 6px;">«</button>
-                <button type="button" class="role-btn active" style="padding: 2px 6px;">1</button>
-                <button type="button" class="role-btn" style="padding: 2px 6px;">2</button>
-                <button type="button" class="role-btn" style="padding: 2px 6px;">3</button>
-                <button type="button" class="role-btn" style="padding: 2px 6px;">4</button>
-                <button type="button" class="role-btn" style="padding: 2px 6px;">5</button>
-                <span style="padding: 2px 4px;">...</span>
-                <button type="button" class="role-btn" style="padding: 2px 6px;">10</button>
-                <button type="button" class="role-btn" style="padding: 2px 6px;">»</button>
-              </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="text" id="searchInput" class="search-input font-mono" placeholder="🔍 Search Critical Patients by ID or Name..." onkeyup="renderCriticalPanel()" style="min-width: 260px;">
+              <select id="wardFilter" class="filter-select" onchange="renderCriticalPanel()">
+                <option value="All Wards">All Wards</option>
+                <option value="ICU">ICU</option>
+                <option value="Cardiology">Cardiology</option>
+                <option value="General Medicine">General Medicine</option>
+                <option value="Neurology">Neurology</option>
+                <option value="Pediatrics">Pediatrics</option>
+              </select>
             </div>
           </div>
 
-          <!-- Critical Patient Panel (Right Side) -->
-          <div class="medintel-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 8px;">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <span>🚨</span>
-                  <h2 style="font-size: 12px; font-weight: 700; color: #fff;">Critical Patients (<span id="criticalHeaderCount" class="font-mono">8</span>)</h2>
-                </div>
-                <a href="{{ url_for('critical_alerts') }}" style="color: var(--accent-blue); font-size: 10px; font-weight: 700; text-decoration: none;">View All</a>
-              </div>
-              <div id="criticalPatientsList" class="critical-panel-container">
-                <!-- Populated by main.js -->
-              </div>
-            </div>
-            <div style="text-align: center; margin-top: 6px;">
-              <a href="{{ url_for('critical_alerts') }}" style="color: var(--critical-red); font-size: 10px; font-weight: 700; text-decoration: none;">+ 5 more critical patients</a>
-            </div>
-          </div>
-        </div>
-
-        <!-- Lower Analytics Section (4 Horizontal Cards Directly Below Monitoring Section) -->
-        <div class="analytics-grid" id="analyticsGrid">
-          <!-- Card 1: Severity Distribution -->
-          <div class="medintel-panel">
-            <h3 style="font-size: 11px; font-weight: 700; margin-bottom: 6px; color: #fff;">Severity Distribution</h3>
-            <div style="display: flex; items-center; justify-content: space-between; align-items: center;">
-              <div style="width: 70px; height: 70px; border-radius: 50%; border: 8px solid var(--low-green); border-top-color: var(--critical-red); border-right-color: var(--moderate-orange); display: flex; align-items: center; justify-content: center;" class="font-mono">
-                <span style="font-size: 11px; font-weight: 800;">100</span>
-              </div>
-              <div style="font-size: 10px; space-y-1;">
-                <div style="color: var(--critical-red); font-weight: 600;">🔴 Critical: 8 (8.0%)</div>
-                <div style="color: var(--moderate-orange); font-weight: 600;">🟠 Moderate: 7 (7.0%)</div>
-                <div style="color: var(--low-green); font-weight: 600;">🟢 Low Risk: 85 (85.0%)</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card 2: Ward Distribution -->
-          <div class="medintel-panel">
-            <h3 style="font-size: 11px; font-weight: 700; margin-bottom: 6px; color: #fff;">📊 Ward Distribution</h3>
-            <div style="font-size: 10px; space-y-1.5;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span>ICU</span>
-                <div style="width: 100px; background: var(--bg-dark); height: 6px; border-radius: 3px; overflow: hidden; margin: 0 6px;">
-                  <div style="width: 80%; background: var(--purple-accent); height: 100%;"></div>
-                </div>
-                <span class="font-mono" style="font-weight:700;">28</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Cardiology</span>
-                <div style="width: 100px; background: var(--bg-dark); height: 6px; border-radius: 3px; overflow: hidden; margin: 0 6px;">
-                  <div style="width: 70%; background: var(--critical-red); height: 100%;"></div>
-                </div>
-                <span class="font-mono" style="font-weight:700;">24</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span>General Medicine</span>
-                <div style="width: 100px; background: var(--bg-dark); height: 6px; border-radius: 3px; overflow: hidden; margin: 0 6px;">
-                  <div style="width: 65%; background: var(--accent-blue); height: 100%;"></div>
-                </div>
-                <span class="font-mono" style="font-weight:700;">22</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Neurology</span>
-                <div style="width: 100px; background: var(--bg-dark); height: 6px; border-radius: 3px; overflow: hidden; margin: 0 6px;">
-                  <div style="width: 40%; background: var(--accent-cyan); height: 100%;"></div>
-                </div>
-                <span class="font-mono" style="font-weight:700;">14</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Pediatrics</span>
-                <div style="width: 100px; background: var(--bg-dark); height: 6px; border-radius: 3px; overflow: hidden; margin: 0 6px;">
-                  <div style="width: 35%; background: var(--low-green); height: 100%;"></div>
-                </div>
-                <span class="font-mono" style="font-weight:700;">12</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card 3: Vitals Summary (Average) -->
-          <div class="medintel-panel">
-            <h3 style="font-size: 11px; font-weight: 700; margin-bottom: 6px; color: #fff;">🩺 Vitals Summary <span style="font-size: 9px; color: var(--text-subtle); font-weight: 400;">(Average)</span></h3>
-            <div style="font-size: 10px; space-y-1.5;">
-              <div style="display:flex; justify-content:space-between;"><span>❤️ Heart Rate</span><span class="font-mono" style="font-weight:700;">84 bpm</span></div>
-              <div style="display:flex; justify-content:space-between;"><span>🩸 SpO₂</span><span class="font-mono" style="font-weight:700;">95%</span></div>
-              <div style="display:flex; justify-content:space-between;"><span>🌡️ Temperature</span><span class="font-mono" style="font-weight:700;">37.1 °C</span></div>
-              <div style="display:flex; justify-content:space-between;"><span>🩺 Blood Pressure</span><span class="font-mono" style="font-weight:700;">132/84 mmHg</span></div>
-              <div style="display:flex; justify-content:space-between;"><span>🫁 Respiratory Rate</span><span class="font-mono" style="font-weight:700;">18 /min</span></div>
-            </div>
-          </div>
-
-          <!-- Card 4: Total Vital Records -->
-          <div class="medintel-panel">
-            <h3 style="font-size: 11px; font-weight: 700; margin-bottom: 4px; color: #fff;">📊 Total Vital Records</h3>
-            <div style="font-size: 22px; font-weight: 800; color: var(--accent-cyan);" class="font-mono">5,043</div>
-            <div style="font-size: 9px; color: var(--text-subtle);">Total records in database</div>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
-              <svg width="100" height="24" viewBox="0 0 100 24">
-                <path d="M0,20 Q25,5 50,15 T100,5" fill="none" stroke="#8b5cf6" stroke-width="2"/>
-              </svg>
-              <span style="font-size: 9px; color: var(--low-green); font-weight: 700;">↑ 245 today</span>
-            </div>
+          <!-- Dynamic Multi-Column Grid of Critical Patients -->
+          <div id="criticalPatientsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px;">
+            <!-- Populated dynamically by JS -->
           </div>
         </div>
 
@@ -448,144 +293,180 @@
     </div>
   </div>
 
-  <!-- Database Modals -->
-  <div id="modalAddPatient" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 500px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:8px; margin-bottom:12px;">
-        <h3 style="color:#fff; font-size:14px; font-weight:700; margin:0;">+ Add New Patient</h3>
-        <button type="button" onclick="closeModal('modalAddPatient')" style="background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer;">✕</button>
-      </div>
-
-      <div id="addPatientAlert" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; margin-bottom:10px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:var(--critical-red);"></div>
-
-      <form onsubmit="handleAddPatient(event)" id="formAddPatient">
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-          <div class="form-group">
-            <label style="font-size:10px; color:var(--text-subtle);">First Name <span style="color:var(--critical-red);">*</span></label>
-            <input type="text" id="addFirstName" class="form-control" required placeholder="First Name">
-          </div>
-          <div class="form-group">
-            <label style="font-size:10px; color:var(--text-subtle);">Last Name <span style="color:var(--critical-red);">*</span></label>
-            <input type="text" id="addLastName" class="form-control" required placeholder="Last Name">
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
-          <div class="form-group">
-            <label style="font-size:10px; color:var(--text-subtle);">Age <span style="color:var(--critical-red);">*</span></label>
-            <input type="number" id="addAge" class="form-control font-mono" min="0" max="120" required placeholder="Age (0-120)">
-          </div>
-          <div class="form-group">
-            <label style="font-size:10px; color:var(--text-subtle);">Gender <span style="color:var(--critical-red);">*</span></label>
-            <select id="addGender" class="form-control">
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
-          <div class="form-group">
-            <label style="font-size:10px; color:var(--text-subtle);">Ward <span style="color:var(--critical-red);">*</span></label>
-            <select id="addWard" class="form-control">
-              <option value="ICU">ICU</option>
-              <option value="Cardiology">Cardiology</option>
-              <option value="General Medicine">General Medicine</option>
-              <option value="Neurology">Neurology</option>
-              <option value="Pediatrics">Pediatrics</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label style="font-size:10px; color:var(--text-subtle);">Blood Group</label>
-            <select id="addBloodGroup" class="form-control">
-              <option value="O+">O+</option>
-              <option value="A+">A+</option>
-              <option value="B+">B+</option>
-              <option value="AB+">AB+</option>
-              <option value="O-">O-</option>
-              <option value="A-">A-</option>
-              <option value="B-">B-</option>
-              <option value="AB-">AB-</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
-          <div class="form-group">
-            <label style="font-size:10px; color:var(--text-subtle);">Room Number</label>
-            <input type="text" id="addRoomNo" class="form-control font-mono" placeholder="e.g. 201" value="201">
-          </div>
-          <div class="form-group">
-            <label style="font-size:10px; color:var(--text-subtle);">Bed Number</label>
-            <input type="text" id="addBedNo" class="form-control font-mono" placeholder="e.g. 1" value="1">
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-top:8px;">
-          <label style="font-size:10px; color:var(--text-subtle);">Custom Patient ID <span style="color:var(--text-subtle);">(Optional, e.g. 201)</span></label>
-          <input type="number" id="addCustomPid" class="form-control font-mono" placeholder="Auto-generated if empty">
-        </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; border-top:1px solid var(--border-color); padding-top:10px;">
-          <button type="button" class="btn-db" onclick="closeModal('modalAddPatient')">Cancel</button>
-          <button type="submit" class="btn-action btn-start" id="btnAddPatientSubmit">Save Patient</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="modalEditPatient" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-      <h3 style="color:#fff; margin-bottom:12px;">Edit Patient Record</h3>
-      <form onsubmit="handleEditPatient(event)">
-        <div class="form-group"><label>Select Patient</label><select class="form-control"><option>P101 - Nikita Bajwa</option></select></div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
-          <button type="button" class="btn-db" onclick="closeModal('modalEditPatient')">Cancel</button>
-          <button type="submit" class="btn-action btn-start">Update</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="modalDeletePatient" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 440px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:8px; margin-bottom:12px;">
-        <h3 style="color:var(--critical-red); font-size:14px; font-weight:700; margin:0;">🗑️ Delete Patient Record</h3>
-        <button type="button" onclick="closeModal('modalDeletePatient')" style="background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer;">✕</button>
-      </div>
-
-      <div id="deletePatientAlert" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; margin-bottom:10px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:var(--critical-red);"></div>
-
-      <form onsubmit="handleDeletePatient(event)" id="formDeletePatient">
-        <div class="form-group">
-          <label style="font-size:10px; color:var(--text-subtle);">Patient ID or Name <span style="color:var(--critical-red);">*</span></label>
-          <div style="display:flex; gap:6px;">
-            <input type="text" id="deletePatientSearchInput" class="form-control font-mono" placeholder="e.g. P150 or Nikita Bajwa" style="flex:1;" onkeyup="if(event.key==='Enter'){event.preventDefault();searchPatientForDelete();}">
-            <button type="button" class="btn-action btn-start" onclick="searchPatientForDelete()" style="padding:4px 10px; font-size:11px; white-space:nowrap;">Find Patient</button>
-          </div>
-        </div>
-
-        <div id="deletePatientMatchesBox" style="display:none; margin-top:8px;">
-          <label style="font-size:10px; color:var(--accent-amber); font-weight:700;">Multiple patients found. Select Patient ID:</label>
-          <select id="deletePatientMatchSelect" class="form-control font-mono" onchange="selectMatchPatientForDelete()"></select>
-        </div>
-
-        <div id="deleteConfirmBox" style="display:none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 10px; border-radius: 8px; margin-top: 10px;">
-          <div style="font-weight: 700; color: #fff; font-size: 12px;" id="deleteConfirmTitle">Patient Found — Confirm Delete</div>
-          <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 700; margin-top: 2px;" id="deleteConfirmPidName">P101 — Nikita Bajwa</div>
-          <div style="font-size: 10px; color: var(--text-muted);" id="deleteConfirmWard">General Medicine • Room 201 • Bed 1</div>
-          <div style="font-size: 10px; color: var(--critical-red); margin-top: 6px; font-weight: 600;">⚠️ Are you sure you want to delete this patient? This action cannot be undone.</div>
-        </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; border-top:1px solid var(--border-color); padding-top:10px;">
-          <button type="button" class="btn-db" onclick="closeModal('modalDeletePatient')">Cancel</button>
-          <button type="submit" class="btn-action btn-stop" id="btnDeletePatientSubmit" disabled style="opacity:0.5; cursor:not-allowed;">Confirm Delete</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script>
+    // Update Sidebar Analytics dynamically from real patient vitals
+    function updateSidebarAnalytics() {
+      if (!allPatients || allPatients.length === 0) return;
+
+      const total = allPatients.length;
+      const criticalCount = allPatients.filter(p => p.severity === 'CRITICAL').length;
+      const moderateCount = allPatients.filter(p => p.severity === 'MODERATE').length;
+      const lowCount = total - criticalCount - moderateCount;
+
+      // 1. Severity Distribution
+      const cPct = ((criticalCount / total) * 100).toFixed(1);
+      const mPct = ((moderateCount / total) * 100).toFixed(1);
+      const lPct = ((lowCount / total) * 100).toFixed(1);
+
+      setText('sideSevCritical', `${criticalCount} (${cPct}%)`);
+      setText('sideSevModerate', `${moderateCount} (${mPct}%)`);
+      setText('sideSevLow', `${lowCount} (${lPct}%)`);
+
+      // Top KPI Cards
+      setText('kpiCriticalCount', criticalCount);
+      setText('kpiModerateCount', moderateCount);
+      setText('kpiLowCount', lowCount);
+      setText('kpiTotalPatients', total);
+
+      // 2. Ward Distribution (Dynamic counts)
+      const wards = ['ICU', 'Cardiology', 'General Medicine', 'Neurology', 'Pediatrics'];
+      const wardCounts = {};
+      let maxWardCount = 1;
+      wards.forEach(w => {
+        const cnt = allPatients.filter(p => p.ward === w).length;
+        wardCounts[w] = cnt;
+        if (cnt > maxWardCount) maxWardCount = cnt;
+      });
+
+      const wardColors = {
+        'ICU': 'var(--purple-accent)',
+        'Cardiology': 'var(--critical-red)',
+        'General Medicine': 'var(--accent-blue)',
+        'Neurology': 'var(--accent-cyan)',
+        'Pediatrics': 'var(--low-green)'
+      };
+
+      const wardContainer = document.getElementById('sideWardContainer');
+      if (wardContainer) {
+        wardContainer.innerHTML = wards.map(w => {
+          const cnt = wardCounts[w] || 0;
+          const pct = Math.round((cnt / maxWardCount) * 100);
+          return `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+              <span style="width: 80px; font-weight: 500;">${w}</span>
+              <div style="flex:1; background: var(--bg-dark); height: 5px; border-radius: 3px; overflow: hidden; margin: 0 6px;">
+                <div style="width: ${pct}%; background: ${wardColors[w] || 'var(--accent-blue)'}; height: 100%;"></div>
+              </div>
+              <span class="font-mono" style="font-weight:700; min-width: 16px; text-align:right;">${cnt}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 3. Vitals Summary (Averages dynamically calculated from real patient data)
+      let sumHr = 0, sumSpo2 = 0, sumTemp = 0, sumSys = 0, sumDia = 0, sumRr = 0;
+      let validCount = 0;
+
+      allPatients.forEach(p => {
+        if (p.heart_rate) {
+          sumHr += p.heart_rate;
+          sumSpo2 += (p.spo2 || 95);
+          sumTemp += (p.temperature || 37.0);
+          sumSys += (p.systolic_bp || 120);
+          sumDia += (p.diastolic_bp || 80);
+          sumRr += (p.respiratory_rate || 16);
+          validCount++;
+        }
+      });
+
+      if (validCount > 0) {
+        const avgHr = Math.round(sumHr / validCount);
+        const avgSpo2 = Math.round(sumSpo2 / validCount);
+        const avgTemp = (sumTemp / validCount).toFixed(1);
+        const avgSys = Math.round(sumSys / validCount);
+        const avgDia = Math.round(sumDia / validCount);
+        const avgRr = Math.round(sumRr / validCount);
+
+        setText('sideAvgHr', `${avgHr} bpm`);
+        setText('sideAvgSpo2', `${avgSpo2}%`);
+        setText('sideAvgTemp', `${avgTemp} °C`);
+        setText('sideAvgBp', `${avgSys}/${avgDia} mmHg`);
+        setText('sideAvgRr', `${avgRr} /min`);
+      }
+    }
+
+    // Overriding renderCriticalPanel specifically for Doctor Dashboard to show ALL Critical Patients
+    function renderCriticalPanel() {
+      const container = document.getElementById('criticalPatientsList');
+      if (!container) return;
+
+      updateSidebarAnalytics();
+
+      const searchVal = (document.getElementById('searchInput')?.value || '').toLowerCase();
+      const wardVal = document.getElementById('wardFilter')?.value || 'All Wards';
+
+      const criticals = (allPatients || []).filter(p => {
+        if (p.severity !== 'CRITICAL') return false;
+        const matchSearch = (p.patient_id || '').toLowerCase().includes(searchVal) || (p.name || '').toLowerCase().includes(searchVal);
+        const matchWard = wardVal === 'All Wards' || p.ward === wardVal;
+        return matchSearch && matchWard;
+      });
+
+      const headerCount = document.getElementById('criticalHeaderCount');
+      if (headerCount) headerCount.textContent = criticals.length;
+
+      const badgeCount = document.getElementById('pushBadgeCount');
+      if (badgeCount) badgeCount.textContent = criticals.length;
+
+      if (criticals.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; color: var(--low-green);">
+            <h3 style="font-size:14px; font-weight:700;">🟢 No Active Critical Patients</h3>
+            <p style="font-size: 11px; color: var(--text-subtle); margin-top: 4px;">All monitored patient vitals are currently within stable thresholds.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = criticals.map(p => {
+        const reasonItems = p.reasons && p.reasons.length > 0
+          ? p.reasons.map(r => `<li><span class="bullet-dot">•</span> ${r}</li>`).join('')
+          : `<li><span class="bullet-dot">•</span> Hypoxia / Pyrexia</li>`;
+
+        const hrDanger = p.heart_rate > 120 ? 'val-danger' : '';
+        const spo2Danger = p.spo2 < 90 ? 'val-danger' : '';
+        const tempDanger = p.temperature > 38.5 ? 'val-danger' : '';
+
+        return `
+          <div class="critical-card" onclick="openPatientDrawer('${p.patient_id}')" style="cursor:pointer; margin-bottom:0;">
+            <div class="critical-header">
+              <div>
+                <span class="status-dot red"></span>
+                <strong class="font-mono" style="color: var(--accent-blue); font-size:13px;">${p.patient_id}</strong>
+                <span style="font-weight:700; color:#fff; margin-left: 6px; font-size:13px;">${p.name}</span>
+                <span style="font-size:10px; color:var(--text-subtle); margin-left:6px;">(${p.age || '--'} yrs • ${p.gender || '--'})</span>
+              </div>
+              <span class="badge-severity CRITICAL font-mono" style="font-size:10px; padding: 2px 6px;">🔴 CRITICAL</span>
+            </div>
+
+            <div style="font-size:11px; color: var(--text-muted); margin-top:4px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+              <span>📍 <strong>Location:</strong> ${p.ward} • Room ${p.room_no} • Bed ${p.bed_no}</span>
+              <span style="color: var(--accent-cyan); font-weight: 600;">👨‍⚕️ ${p.assigned_doctor || 'Dr. Amit Verma'} (${p.assigned_specialty || 'CARDIOLOGY'})</span>
+            </div>
+
+            <div class="critical-vitals font-mono" style="font-size:11px; margin-top:8px; padding: 6px 10px;">
+              <span class="${spo2Danger}">SpO₂: ${p.spo2}%</span> •
+              <span class="${tempDanger}">Temp: ${p.temperature}°C</span> •
+              <span class="${hrDanger}">HR: ${p.heart_rate} bpm</span> •
+              <span>BP: ${p.systolic_bp}/${p.diastolic_bp}</span> •
+              <span>RR: ${p.respiratory_rate}/min</span>
+            </div>
+
+            <div class="reason-box" style="margin-top:8px;">
+              <div class="reason-title">CLINICAL REASON</div>
+              <ul class="reason-bullets">
+                ${reasonItems}
+              </ul>
+            </div>
+
+            <div class="critical-rec-box" style="margin-top:8px;">
+              <span style="font-weight:700; color:var(--accent-cyan);">Recommendation:</span> ${p.recommendation || 'Initiate continuous monitoring & oxygen therapy.'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  </script>
 </body>
 </html>
