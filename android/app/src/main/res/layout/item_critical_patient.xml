@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/surface_dark"
+    android:padding="16dp"
+    android:layout_marginBottom="12dp">
+
+    <!-- Card Top Header: Patient Name & Severity Badge -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvCardPatientName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Rahul Patil"
+                android:textColor="@color/text_light"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCardPatientMeta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ID: P101 • 54Y Male • Room 201 Bed 1"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvCardSeverityBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="▲ CRITICAL"
+            android:textColor="@color/critical_red"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:background="@color/surface_variant"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+    </LinearLayout>
+
+    <!-- Ward & Specialty Info -->
+    <TextView
+        android:id="@+id/tvCardWardSpecialty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Cardiology Ward • Assigned: Dr. Viraj Patil"
+        android:textColor="@color/accent_blue"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_marginTop="6dp" />
+
+    <!-- Vital Telemetry Grid (HR, SpO2, Temp, BP, RR) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/surface_variant"
+        android:padding="10dp"
+        android:layout_marginTop="10dp">
+
+        <!-- Heart Rate -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="HR"
+                android:textColor="@color/text_faint"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCardVitalHr"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="132"
+                android:textColor="@color/critical_red"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="bpm"
+                android:textColor="@color/text_muted"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <!-- SpO2 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SpO2"
+                android:textColor="@color/text_faint"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCardVitalSpo2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="88%"
+                android:textColor="@color/critical_red"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="sat"
+                android:textColor="@color/text_muted"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <!-- Blood Pressure -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1.2"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BP"
+                android:textColor="@color/text_faint"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCardVitalBp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="175/105"
+                android:textColor="@color/text_light"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="mmHg"
+                android:textColor="@color/text_muted"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <!-- Temperature -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TEMP"
+                android:textColor="@color/text_faint"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCardVitalTemp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="99.2°"
+                android:textColor="@color/text_light"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="°F"
+                android:textColor="@color/text_muted"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <!-- Respiratory Rate -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RR"
+                android:textColor="@color/text_faint"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCardVitalRr"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="26"
+                android:textColor="@color/moderate_amber"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="/min"
+                android:textColor="@color/text_muted"
+                android:textSize="9sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Clinical Reasons -->
+    <TextView
+        android:id="@+id/tvCardReasons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Severe Tachycardia (132 bpm), Hypoxia (88% SpO2)"
+        android:textColor="@color/critical_red"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_marginTop="8dp" />
+
+    <!-- Clinical Recommendation -->
+    <TextView
+        android:id="@+id/tvCardRecommendation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Administer supplemental oxygen. Continuous ECG monitoring required."
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        android:layout_marginTop="4dp" />
+
+</LinearLayout>

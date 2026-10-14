@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS Patients (
     ward VARCHAR,
     room_no VARCHAR,
     bed_no VARCHAR,
-    admission_date DATE
+    admission_date DATE,
+    specialty VARCHAR,
+    assigned_doctor_id VARCHAR
 );
 
 

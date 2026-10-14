@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import random
 import importlib.util
 from datetime import datetime
@@ -12,16 +13,20 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from database.connection import get_connection
 
-# Dynamic import for local kafka/producer.py to avoid shadowing by site-packages kafka module
-try:
-    kafka_prod_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "kafka", "producer.py"))
-    spec = importlib.util.spec_from_file_location("medintel_kafka_producer", kafka_prod_path)
-    medintel_kafka_producer = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(medintel_kafka_producer)
-    publish_vitals_batch_to_kafka = medintel_kafka_producer.publish_vitals_batch_to_kafka
-except Exception:
-    def publish_vitals_batch_to_kafka(batch, topic_name='medintel-vitals', bootstrap_servers=['localhost:9094']):
-        return 0
+_kafka_publisher_fn = None
+
+def publish_vitals_batch_to_kafka(batch, topic_name='medintel-vitals', bootstrap_servers=['localhost:9094']):
+    global _kafka_publisher_fn
+    if _kafka_publisher_fn is None:
+        try:
+            kafka_prod_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "kafka", "producer.py"))
+            spec = importlib.util.spec_from_file_location("medintel_kafka_producer", kafka_prod_path)
+            medintel_kafka_producer = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(medintel_kafka_producer)
+            _kafka_publisher_fn = medintel_kafka_producer.publish_vitals_batch_to_kafka
+        except Exception:
+            _kafka_publisher_fn = lambda batch, topic_name='medintel-vitals', bootstrap_servers=['localhost:9094']: 0
+    return _kafka_publisher_fn(batch, topic_name=topic_name, bootstrap_servers=bootstrap_servers)
 
 MAX_READINGS_PER_PATIENT = 50
 
@@ -30,6 +35,8 @@ MAX_READINGS_PER_PATIENT = 50
 
 # Dynamic Simulator Realism State
 SIMULATOR_CYCLE_COUNT = 0
+LAST_ROTATION_TIMESTAMP = 0.0
+LAST_ROTATION_CYCLE = 0
 TARGET_CRITICAL_PIDS = set()
 PATIENT_CLINICAL_PROFILES = {}
 PATIENT_STAGE = {}
@@ -47,18 +54,23 @@ def _clean_patient_id(pid):
 
 def update_simulator_patient_rotation(active_patient_ids):
     """
-    Manages dynamic rotation of ~8 critical patients.
-    Cycles 1-5: All patients normal/moderate (0 critical).
-    Cycle 6+: Pick 8 random active patients to deteriorate.
-    Every 6 cycles after cycle 6: Recover 2-4 critical patients, deteriorate 2-4 non-critical patients.
-    Purges deleted patient IDs.
+    Manages realistic clinical rotation of 6-8 critical patients.
+    - Maintains 6-8 critical patients at any given time.
+    - Approximately every 2 minutes (~120s or ~40 cycles at 3s intervals), only 1-2 patients change clinical state:
+        * 1 critical patient recovers and 1 non-critical patient deteriorates (2 total state changes), OR
+        * 1 patient transitions (recovers/deteriorates) to maintain 6-8 critical patients (1 total state change).
+    - Preserves the majority of patients' current states (at least 9-10 out of 11 remain unchanged).
+    - Smooth step increments prevent unrealistic sudden jumps.
+    - Permanently purges deleted patients from state.
     """
-    global SIMULATOR_CYCLE_COUNT, TARGET_CRITICAL_PIDS, PATIENT_CLINICAL_PROFILES, PATIENT_STAGE, PATIENT_VITAL_STATE
+    global SIMULATOR_CYCLE_COUNT, LAST_ROTATION_TIMESTAMP, LAST_ROTATION_CYCLE
+    global TARGET_CRITICAL_PIDS, PATIENT_CLINICAL_PROFILES, PATIENT_STAGE, PATIENT_VITAL_STATE
 
     SIMULATOR_CYCLE_COUNT += 1
+    now_ts = time.time()
     active_set = set(_clean_patient_id(p) for p in active_patient_ids)
 
-    # Purge deleted patients from state
+    # Purge deleted patients permanently from state so they never reappear
     for pid in list(PATIENT_VITAL_STATE.keys()):
         if _clean_patient_id(pid) not in active_set:
             PATIENT_VITAL_STATE.pop(pid, None)
@@ -68,44 +80,86 @@ def update_simulator_patient_rotation(active_patient_ids):
 
     for pid in list(TARGET_CRITICAL_PIDS):
         if pid not in active_set:
-            TARGET_CRITICAL_PIDS.remove(pid)
+            TARGET_CRITICAL_PIDS.discard(pid)
 
     active_list = sorted(list(active_set))
     if not active_list:
         return
 
-    if SIMULATOR_CYCLE_COUNT <= 5:
-        TARGET_CRITICAL_PIDS.clear()
-        return
-
-    # Cycle 6 initial population of 8 critical patients
+    # Initial population: preserve demo baseline (P101, P102, P104, P105, P106, P110) or stabilize on 6-7 critical patients
     if not TARGET_CRITICAL_PIDS:
-        target_count = min(8, len(active_list))
-        selected = set(random.sample(active_list, target_count))
+        demo_baseline = {101, 102, 104, 105, 106, 110}
+        if demo_baseline.issubset(active_set):
+            selected = set(demo_baseline)
+        else:
+            target_count = min(7, len(active_list))
+            selected = set(random.sample(active_list, target_count))
         TARGET_CRITICAL_PIDS = selected
         for pid in selected:
             PATIENT_CLINICAL_PROFILES[pid] = random.choice(PROFILES)
             PATIENT_STAGE[pid] = 1.0
+        LAST_ROTATION_TIMESTAMP = now_ts
+        LAST_ROTATION_CYCLE = SIMULATOR_CYCLE_COUNT
         return
 
-    # Periodic rotation every 6 cycles after cycle 6
-    if (SIMULATOR_CYCLE_COUNT - 6) % 6 == 0 and SIMULATOR_CYCLE_COUNT > 6:
+    # Keep critical count strictly between 6 and 8 if patients added/deleted
+    if len(TARGET_CRITICAL_PIDS) < 6 and len(active_list) >= 6:
+        needed = min(7 - len(TARGET_CRITICAL_PIDS), len(active_list) - len(TARGET_CRITICAL_PIDS))
+        candidates = [p for p in active_list if p not in TARGET_CRITICAL_PIDS]
+        if candidates and needed > 0:
+            for p_add in random.sample(candidates, min(needed, len(candidates))):
+                TARGET_CRITICAL_PIDS.add(p_add)
+                PATIENT_CLINICAL_PROFILES[p_add] = random.choice(PROFILES)
+                PATIENT_STAGE[p_add] = 1.0
+    elif len(TARGET_CRITICAL_PIDS) > 8:
+        excess = len(TARGET_CRITICAL_PIDS) - 7
+        for p_rem in random.sample(list(TARGET_CRITICAL_PIDS), excess):
+            TARGET_CRITICAL_PIDS.discard(p_rem)
+            PATIENT_STAGE[p_rem] = 0.0
+
+    # 2-minute transition check (120 seconds or ~40 cycles)
+    time_elapsed = now_ts - LAST_ROTATION_TIMESTAMP
+    cycles_elapsed = SIMULATOR_CYCLE_COUNT - LAST_ROTATION_CYCLE
+    if time_elapsed >= 120.0 or cycles_elapsed >= 40:
         curr_crit = list(TARGET_CRITICAL_PIDS)
         non_crit = [p for p in active_list if p not in TARGET_CRITICAL_PIDS]
 
         if curr_crit and non_crit:
-            rotate_count = min(random.randint(2, 4), len(curr_crit), len(non_crit))
-            recover_pids = random.sample(curr_crit, rotate_count)
-            deteriorate_pids = random.sample(non_crit, rotate_count)
+            # Strictly 1–2 patients change clinical state every ~2 minutes
+            total_transitions = random.choice([1, 2])
+            recover_pids = []
+            deteriorate_pids = []
 
+            if total_transitions == 2 and len(curr_crit) >= 1 and len(non_crit) >= 1:
+                # 1 patient recovers and 1 patient deteriorates (2 total state changes)
+                recover_pids = random.sample(curr_crit, 1)
+                deteriorate_pids = random.sample(non_crit, 1)
+            else:
+                # 1 patient changes state (1 total state change)
+                # Maintain critical count in [6, 8]
+                if len(curr_crit) <= 6 and non_crit:
+                    deteriorate_pids = random.sample(non_crit, 1)
+                elif len(curr_crit) >= 8 and curr_crit:
+                    recover_pids = random.sample(curr_crit, 1)
+                else:
+                    if random.random() < 0.5 and curr_crit:
+                        recover_pids = random.sample(curr_crit, 1)
+                    elif non_crit:
+                        deteriorate_pids = random.sample(non_crit, 1)
+
+            # 1. Recover critical patients (CRITICAL -> MODERATE -> LOW)
             for p_rec in recover_pids:
-                TARGET_CRITICAL_PIDS.remove(p_rec)
+                TARGET_CRITICAL_PIDS.discard(p_rec)
                 PATIENT_STAGE[p_rec] = 0.0
 
+            # 2. Deteriorate non-critical patients (LOW -> MODERATE -> CRITICAL)
             for p_det in deteriorate_pids:
                 TARGET_CRITICAL_PIDS.add(p_det)
                 PATIENT_CLINICAL_PROFILES[p_det] = random.choice(PROFILES)
                 PATIENT_STAGE[p_det] = 1.0
+
+            LAST_ROTATION_TIMESTAMP = now_ts
+            LAST_ROTATION_CYCLE = SIMULATOR_CYCLE_COUNT
 
 
 def generate_vitals_for_patient(patient_id):
@@ -173,32 +227,34 @@ def generate_vitals_for_patient(patient_id):
     else:
         prev_hr, prev_spo2, prev_temp, prev_sys_bp, prev_dia_bp, prev_resp = PATIENT_VITAL_STATE[patient_id]
 
-        # Gradual step changes towards target (2-3 cycles from Normal to Critical or Critical to Normal)
+        # Gradual step changes towards target (takes 4-6 cycles to smoothly traverse LOW <-> MODERATE <-> CRITICAL)
         spo2_diff = target_spo2 - prev_spo2
-        spo2_step = 0 if spo2_diff == 0 else (min(4, max(2, abs(spo2_diff))) if spo2_diff > 0 else -min(4, max(2, abs(spo2_diff))))
+        spo2_step = 0 if spo2_diff == 0 else (min(2, max(1, abs(spo2_diff))) if spo2_diff > 0 else -min(2, max(1, abs(spo2_diff))))
 
         temp_diff = round(target_temp - prev_temp, 1)
-        temp_step = 0.0 if temp_diff == 0.0 else (min(0.6, max(0.3, abs(temp_diff))) if temp_diff > 0 else -min(0.6, max(0.3, abs(temp_diff))))
+        temp_step = 0.0 if temp_diff == 0.0 else (min(0.2, max(0.1, abs(temp_diff))) if temp_diff > 0 else -min(0.2, max(0.1, abs(temp_diff))))
 
         hr_diff = target_hr - prev_hr
-        hr_step = 0 if hr_diff == 0 else (min(12, max(4, abs(hr_diff))) if hr_diff > 0 else -min(12, max(4, abs(hr_diff))))
+        hr_step = 0 if hr_diff == 0 else (min(5, max(2, abs(hr_diff))) if hr_diff > 0 else -min(5, max(2, abs(hr_diff))))
 
         sys_diff = target_sys_bp - prev_sys_bp
-        sys_step = 0 if sys_diff == 0 else (min(12, max(4, abs(sys_diff))) if sys_diff > 0 else -min(12, max(4, abs(sys_diff))))
+        sys_step = 0 if sys_diff == 0 else (min(5, max(2, abs(sys_diff))) if sys_diff > 0 else -min(5, max(2, abs(sys_diff))))
 
         dia_diff = target_dia_bp - prev_dia_bp
-        dia_step = 0 if dia_diff == 0 else (min(6, max(2, abs(dia_diff))) if dia_diff > 0 else -min(6, max(2, abs(dia_diff))))
+        dia_step = 0 if dia_diff == 0 else (min(3, max(1, abs(dia_diff))) if dia_diff > 0 else -min(3, max(1, abs(dia_diff))))
 
         resp_diff = target_resp - prev_resp
-        resp_step = 0 if resp_diff == 0 else (min(4, max(2, abs(resp_diff))) if resp_diff > 0 else -min(4, max(2, abs(resp_diff))))
+        resp_step = 0 if resp_diff == 0 else (min(2, max(1, abs(resp_diff))) if resp_diff > 0 else -min(2, max(1, abs(resp_diff))))
 
-        # Small random variation when at target
+        # Small physiological micro-variation when at target
         if spo2_step == 0:
-            spo2_step = random.choice([-1, 0, 1])
+            spo2_step = random.choice([0, 0, -1, 1])
         if temp_step == 0.0:
-            temp_step = random.choice([-0.1, 0.0, 0.1])
+            temp_step = random.choice([0.0, 0.0, -0.1, 0.1])
         if hr_step == 0:
-            hr_step = random.choice([-1, 0, 1])
+            hr_step = random.choice([0, 0, -1, 1])
+        if sys_step == 0:
+            sys_step = random.choice([0, 0, -1, 1])
 
         spo2 = max(75, min(100, prev_spo2 + spo2_step))
         temp = round(max(36.0, min(40.5, prev_temp + temp_step)), 1)
@@ -325,13 +381,21 @@ def process_background_alert_pipeline(con=None):
                 reason_str = ", ".join(reasons) if reasons else "Hypoxia / Pyrexia"
                 rec_str = recommendations[0] if recommendations else "High-flow O2 + antipyretics"
 
-                patient_type = WARD_TO_PATIENT_TYPE.get(ward, "GENERAL")
-                routing_info = SPECIALTY_MAP.get(
-                    patient_type.upper(),
-                    SPECIALTY_MAP.get("GENERAL", {"specialty": "GENERAL MEDICINE", "assigned_doctor": "Dr. Amit Verma"})
-                )
+                # Authoritative specialty resolution directly from patient record
+                spec_val = patient[16] if len(patient) > 16 and patient[16] else None
+                from services.alert_router import SPECIALTY_TO_DOCTOR, SPECIALTY_MAP, WARD_TO_PATIENT_TYPE
+                if spec_val:
+                    routing_info = SPECIALTY_TO_DOCTOR.get(str(spec_val).strip().upper())
+                    if not routing_info:
+                        routing_info = SPECIALTY_MAP.get(str(spec_val).strip().upper(), SPECIALTY_MAP.get("GENERAL"))
+                else:
+                    patient_type = WARD_TO_PATIENT_TYPE.get(ward, "GENERAL")
+                    routing_info = SPECIALTY_MAP.get(
+                        patient_type.upper(),
+                        SPECIALTY_MAP.get("GENERAL", {"specialty": "GENERAL MEDICINE", "assigned_doctor": "Dr. Shreya Sutar", "doctor_name": "Dr. Shreya Sutar"})
+                    )
                 specialty = routing_info.get("specialty", "GENERAL MEDICINE")
-                assigned_doctor = routing_info.get("assigned_doctor", "Dr. Amit Verma")
+                assigned_doctor = routing_info.get("assigned_doctor") or routing_info.get("doctor_name", "Dr. Shreya Sutar")
 
                 record_or_update_critical_alert(
                     patient_id=pid,

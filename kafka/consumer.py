@@ -1,37 +1,51 @@
+import os
 import json
 import warnings
+import socket
 from kafka import KafkaConsumer
 
 # Suppress kafka-python deserializer/serializer interface deprecation warnings for clean output
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="kafka")
 
 # ==============================================================================
-# MedIntel Kafka Consumer (Learning / Basic Implementation)
+# MedIntel Kafka Consumer
+# Subscribes to vital sign telemetry stream from MedIntel producer.
 # ==============================================================================
-# Key Kafka Concepts Covered:
-# 1. Consumer: Application that subscribes to topics and processes stream messages.
-# 2. Consumer Group: Group of consumers sharing topic subscriptions. Kafka balances
-#    partitions among consumers in the group ('medintel-learning-group').
-# 3. Deserializer: Converts byte arrays back into Python keys and JSON objects.
-# 4. Auto Offset Reset: Controls starting position when reading a partition without
-#    a committed offset ('earliest' reads from beginning of available records).
-# 5. Partition Offset: Unique sequential integer assigned to each record in a partition.
-# ==============================================================================
+
+def _is_kafka_broker_reachable(host='localhost', port=9094, timeout=0.2):
+    try:
+        with socket.create_connection((host, int(port)), timeout=timeout):
+            return True
+    except Exception:
+        return False
+
 
 def run_consumer():
-    topic_name = 'patient-vitals'
-    group_id = 'medintel-learning-group'
+    topic_name = os.environ.get('KAFKA_TOPIC_VITALS', 'medintel-vitals')
+    bootstrap_server_str = os.environ.get('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9094')
+    bootstrap_servers = [s.strip() for s in bootstrap_server_str.split(',') if s.strip()]
+    group_id = os.environ.get('KAFKA_CONSUMER_GROUP', 'medintel-learning-group')
+
+    first_server = bootstrap_servers[0] if bootstrap_servers else 'localhost:9094'
+    host, _, port = first_server.partition(':')
+    port = int(port) if port else 9094
 
     print(f"[Consumer] Starting Kafka Consumer...", flush=True)
-    print(f"  - Broker:         localhost:9094", flush=True)
+    print(f"  - Broker:         {bootstrap_server_str}", flush=True)
     print(f"  - Topic:          {topic_name}", flush=True)
     print(f"  - Consumer Group: {group_id}", flush=True)
+
+    if not _is_kafka_broker_reachable(host, port):
+        print(f"[Consumer NOTICE] Kafka broker at {first_server} is not reachable.", flush=True)
+        print("  - Running in direct DuckDB ingestion mode. Start Kafka broker to consume real-time stream.", flush=True)
+        return
+
     print("[Consumer] Waiting for incoming messages (Press Ctrl+C to exit)...\n", flush=True)
 
     # Instantiate KafkaConsumer with JSON deserializers and consumer group
     consumer = KafkaConsumer(
         topic_name,
-        bootstrap_servers=['localhost:9094'],
+        bootstrap_servers=bootstrap_servers,
         group_id=group_id,
         auto_offset_reset='earliest',
         enable_auto_commit=True,

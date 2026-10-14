@@ -31,3 +31,37 @@ secrets/*.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Firebase service account credentials
+secrets/
+*firebase-adminsdk*.json
+
+# Local DuckDB database and backups
+database/*.duckdb
+database/*.duckdb.*
+database/*.bak
+
+# Generated alert audio
+static/audio/alerts/*.wav
+
+# Android build outputs and Gradle caches
+android/.gradle/
+android/**/build/
+android/build/
+android/.kotlin/
+*.apk
+*.aab
+
+# Android local configuration
+android/local.properties
+
+# Firebase Android configuration
+# Review google-services.json before deciding whether to commit it
+
+# Keep Firebase Android configuration out of Git for now
+android/app/google-services.json

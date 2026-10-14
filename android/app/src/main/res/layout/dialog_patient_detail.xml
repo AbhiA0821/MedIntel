@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/surface_dark"
+    android:padding="20dp">
+
+    <!-- Modal Title -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🚨 CRITICAL CLINICAL REVIEW"
+            android:textColor="@color/critical_red"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/tvModalSeverity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CRITICAL"
+            android:textColor="@color/critical_red"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:background="@color/surface_variant"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp" />
+    </LinearLayout>
+
+    <!-- Patient Name & Location Header -->
+    <TextView
+        android:id="@+id/tvModalPatientName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Patient Rahul Patil"
+        android:textColor="@color/text_light"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvModalPatientLocation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Cardiology Ward • Room 201 Bed 1 • ID: P101"
+        android:textColor="@color/accent_blue"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_marginTop="2dp" />
+
+    <!-- Current Vitals Summary Grid -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/surface_variant"
+        android:padding="12dp"
+        android:layout_marginTop="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TELEMETRY VITALS SNAPSHOT"
+            android:textColor="@color/text_faint"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvModalVitals"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="HR: 132 bpm • SpO2: 88% • BP: 175/105 mmHg • Temp: 99.2°F • RR: 26/min"
+            android:textColor="@color/text_light"
+            android:textSize="13sp"
+            android:layout_marginTop="6dp" />
+    </LinearLayout>
+
+    <!-- Alert Time -->
+    <TextView
+        android:id="@+id/tvModalAlertTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Alert Time: Live Dispatch"
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        android:layout_marginTop="8dp" />
+
+    <!-- Clinical Reason -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="CLINICAL REASON"
+        android:textColor="@color/text_faint"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:layout_marginTop="12dp" />
+
+    <TextView
+        android:id="@+id/tvModalReason"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Extreme tachycardia with secondary oxygen desaturation."
+        android:textColor="@color/critical_red"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_marginTop="2dp" />
+
+    <!-- Clinical Recommendation -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="CLINICAL RECOMMENDATION"
+        android:textColor="@color/text_faint"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp" />
+
+    <TextView
+        android:id="@+id/tvModalRecommendation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Immediate bedside evaluation required. Administer 100% FiO2 oxygen."
+        android:textColor="@color/text_light"
+        android:textSize="12sp"
+        android:layout_marginTop="2dp" />
+
+    <!-- Spoken Voice Alert -->
+    <TextView
+        android:id="@+id/tvModalVoiceText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Voice Alert: Patient Rahul Patil, Cardiology Ward Room 201 Bed 1, Critical."
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        android:textStyle="italic"
+        android:layout_marginTop="8dp" />
+
+    <!-- Action Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp">
+
+        <Button
+            android:id="@+id/btnModalSpeak"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="48dp"
+            android:text="Repeat Voice"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/surface_variant"
+            android:layout_marginEnd="6dp" />
+
+        <Button
+            android:id="@+id/btnModalDismiss"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="48dp"
+            android:text="Acknowledge"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/accent_blue"
+            android:layout_marginStart="6dp" />
+    </LinearLayout>
+
+</LinearLayout>

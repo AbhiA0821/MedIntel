@@ -1,3 +1,4 @@
+import os
 import json
 import warnings
 import socket
@@ -13,18 +14,26 @@ except ImportError:
 
 def _is_kafka_broker_reachable(host='localhost', port=9094, timeout=0.1):
     try:
-        with socket.create_connection((host, port), timeout=timeout):
+        with socket.create_connection((host, int(port)), timeout=timeout):
             return True
     except Exception:
         return False
 
 
-def get_kafka_producer(bootstrap_servers=['localhost:9094']):
+def get_kafka_producer(bootstrap_servers=None):
     """
     Instantiate and return a configured KafkaProducer instance.
     Returns None immediately if Kafka broker is unreachable or kafka-python library is not installed.
     """
-    if KafkaProducer is None or not _is_kafka_broker_reachable():
+    if bootstrap_servers is None:
+        bootstrap_server_str = os.environ.get('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9094')
+        bootstrap_servers = [s.strip() for s in bootstrap_server_str.split(',') if s.strip()]
+
+    first_server = bootstrap_servers[0] if bootstrap_servers else 'localhost:9094'
+    host, _, port = first_server.partition(':')
+    port = int(port) if port else 9094
+
+    if KafkaProducer is None or not _is_kafka_broker_reachable(host=host, port=port):
         return None
 
     try:
@@ -39,11 +48,13 @@ def get_kafka_producer(bootstrap_servers=['localhost:9094']):
         return None
 
 
-def publish_vitals_batch_to_kafka(batch, topic_name='medintel-vitals', bootstrap_servers=['localhost:9094']):
+def publish_vitals_batch_to_kafka(batch, topic_name=None, bootstrap_servers=None):
     """
     Publish a batch of vital sign tuples to Kafka.
     batch: List of tuples (vital_id, patient_id, hr, spo2, temp, sys_bp, dia_bp, resp, recorded_at)
     """
+    if topic_name is None:
+        topic_name = os.environ.get('KAFKA_TOPIC_VITALS', 'medintel-vitals')
     if not batch:
         return 0
 

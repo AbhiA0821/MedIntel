@@ -3,122 +3,456 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MEDINTEL — AI Healthcare Login Portal</title>
+  <title>MEDINTEL — Clinical Access Portal</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    .login-container {
+    .login-wrapper {
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 16px;
-      background: radial-gradient(circle at 50% 30%, #161f36 0%, #0b0e17 70%);
+      padding: 24px 16px;
+      background-color: var(--bg);
     }
-    .login-box {
+    .login-card {
       width: 100%;
-      max-width: 400px;
-      background: #121829;
-      border: 1px solid #1e293b;
-      border-radius: 14px;
+      max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       padding: 28px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      box-shadow: var(--shadow-md);
     }
-    .role-tabs {
+    .login-brand-header {
+      text-align: center;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .login-theme-pos {
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+    .segmented-role-control {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 4px;
-      background: #0b0e17;
-      border: 1px solid #1e293b;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
       padding: 3px;
       border-radius: 8px;
       margin-bottom: 20px;
     }
-    .tab-btn {
-      padding: 8px;
+    .segmented-tab {
+      padding: 8px 12px;
       border: none;
       border-radius: 6px;
       background: transparent;
-      color: #94a3b8;
-      font-weight: 700;
+      color: var(--text-muted);
+      font-weight: 600;
       font-size: 12px;
       cursor: pointer;
       text-align: center;
+      transition: background var(--motion-fast), color var(--motion-fast);
     }
-    .tab-btn.active {
-      background: #3b82f6;
-      color: #fff;
+    .segmented-tab[aria-selected="true"],
+    .segmented-tab.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+    .segmented-tab:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .btn-google-primary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 16px;
+      background: #FFFFFF;
+      color: #0F172A;
+      border: 1px solid #CBD5E1;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: var(--shadow-sm);
+      transition: background var(--motion-fast), box-shadow var(--motion-fast);
+      cursor: pointer;
+    }
+    .btn-google-primary:hover {
+      background: #F8FAFC;
+      box-shadow: var(--shadow-md);
+    }
+    .btn-google-primary:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      margin: 20px 0;
+      color: var(--text-faint);
+    }
+    .auth-divider-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .auth-divider-text {
+      padding: 0 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+    .demo-accounts-section {
+      margin-top: 8px;
+    }
+    .demo-accounts-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .demo-chips-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .demo-chip-btn {
+      padding: 6px 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-align: center;
+      transition: all var(--motion-fast);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .demo-chip-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+      background: var(--surface);
+    }
+    .password-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .password-toggle-btn {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+    .password-toggle-btn:hover {
+      color: var(--text);
+    }
+    .btn-submit-accent {
+      width: 100%;
+      padding: 10px 16px;
+      margin-top: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--accent);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background var(--motion-fast), opacity var(--motion-fast);
+    }
+    .btn-submit-accent:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+    .btn-submit-accent:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+    .auth-error-banner {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: var(--critical);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      margin-bottom: 16px;
+      line-height: 1.4;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
     }
   </style>
 </head>
 <body>
-  <div class="login-container">
-    <div class="login-box">
-      <!-- Brand Logo -->
-      <div style="text-align: center; margin-bottom: 20px;">
-        <div class="brand-icon" style="margin: 0 auto 12px auto; width: 44px; height: 44px; font-size: 20px;">M</div>
-        <h1 style="font-size: 20px; font-weight: 800; color: #fff; letter-spacing: 1px;" class="font-mono">MEDINTEL</h1>
-        <p style="font-size: 12px; color: #94a3b8; margin-top: 2px;">AI Healthcare Monitoring Platform</p>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <!-- Brand Logo & Header -->
+      <div class="login-brand-header">
+        <button type="button" class="btn-icon-toggle login-theme-pos" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle light/dark theme" title="Switch Theme">
+          <svg id="themeIconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg id="themeIconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+
+        <div class="brand-icon-svg" style="margin: 0 auto 10px auto; width: 44px; height: 44px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <h1 style="font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: 0.5px;">MEDINTEL</h1>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">Clinical Intelligence &amp; Inpatient Monitoring</p>
       </div>
 
-      <!-- Role Tabs -->
-      <div class="role-tabs">
-        <button type="button" id="tabDoctor" class="tab-btn active" onclick="switchRoleTab('DOCTOR')">Doctor Login</button>
-        <button type="button" id="tabReception" class="tab-btn" onclick="switchRoleTab('RECEPTIONIST')">Receptionist</button>
+      <!-- Error Banner -->
+      <div id="authErrorAlert" class="auth-error-banner" style="{% if not error %}display: none;{% endif %}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span id="authErrorText">{{ error if error else '' }}</span>
       </div>
 
-      {% if error %}
-      <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 10px; border-radius: 8px; font-size: 11px; margin-bottom: 16px;">
-        ⚠️ {{ error }}
+      <!-- Google OAuth 2.0 Sign In Button (Primary Visual Action) -->
+      <div style="margin-bottom: 4px;">
+        <a href="{{ url_for('google_login') }}" id="btnContinueWithGoogle" class="btn-google-primary" aria-label="Sign in with Google">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+            <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.347 2.825.957 4.039l3.007-2.332z"/>
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
+          </svg>
+          Continue with Google
+        </a>
       </div>
-      {% endif %}
 
-      <!-- Login Form -->
-      <form action="{{ url_for('login') }}" method="POST">
+      <!-- Divider -->
+      <div class="auth-divider">
+        <div class="auth-divider-line"></div>
+        <span class="auth-divider-text">or sign in with password</span>
+        <div class="auth-divider-line"></div>
+      </div>
+
+      <!-- Accessible Segmented Role Control -->
+      <div class="segmented-role-control" role="tablist" aria-label="Select User Role">
+        <button type="button" id="tabDoctor" role="tab" aria-selected="true" aria-controls="fieldDoctor" class="segmented-tab active" onclick="switchRoleTab('DOCTOR')">
+          Doctor Portal
+        </button>
+        <button type="button" id="tabReception" role="tab" aria-selected="false" aria-controls="fieldReception" class="segmented-tab" onclick="switchRoleTab('RECEPTIONIST')">
+          Receptionist Desk
+        </button>
+      </div>
+
+      <!-- Password Login Form -->
+      <form action="{{ url_for('login') }}" method="POST" id="passwordLoginForm" onsubmit="handleLoginSubmit(event)">
         <input type="hidden" name="role" id="inputRole" value="DOCTOR">
 
-        <div id="fieldDoctor" class="form-group">
-          <label>Doctor Email / Access ID</label>
-          <input type="email" name="email" value="dr.rahul@medintel.org" class="form-control font-mono" placeholder="dr.rahul@medintel.org">
+        <!-- Doctor Credentials -->
+        <div id="fieldDoctor" class="form-group" role="tabpanel" aria-labelledby="tabDoctor">
+          <label for="doctorEmailInput">Doctor Access ID / Email</label>
+          <input type="email" id="doctorEmailInput" name="email" value="pviraj1025@gmail.com" class="form-control font-mono" placeholder="doctor@hospital.org" autocomplete="username">
+
+          <!-- Grouped Demo Accounts -->
+          <div class="demo-accounts-section" id="demoAccountsDoctor">
+            <div class="demo-accounts-label">Demo accounts</div>
+            <div class="demo-chips-grid">
+              <button type="button" class="demo-chip-btn" onclick="fillCredential('pviraj1025@gmail.com')" title="Cardiology Specialist">Cardiology</button>
+              <button type="button" class="demo-chip-btn" onclick="fillCredential('pawarsamarth4912@gmail.com')" title="Pulmonology Specialist">Pulmonology</button>
+              <button type="button" class="demo-chip-btn" onclick="fillCredential('shreyasutar15@gmail.com')" title="General Medicine Specialist">General</button>
+            </div>
+          </div>
         </div>
 
-        <div id="fieldReception" class="form-group" style="display: none;">
-          <label>Receptionist Access ID</label>
-          <input type="text" name="username" value="REC001" class="form-control font-mono" placeholder="REC001">
+        <!-- Receptionist Credentials -->
+        <div id="fieldReception" class="form-group" role="tabpanel" aria-labelledby="tabReception" style="display: none;">
+          <label for="receptionEmailInput">Receptionist Access ID / Username</label>
+          <input type="text" id="receptionEmailInput" name="username" value="1230821edits@gmail.com" class="form-control font-mono" placeholder="desk@hospital.org" autocomplete="username">
+
+          <!-- Grouped Demo Accounts -->
+          <div class="demo-accounts-section" id="demoAccountsReception">
+            <div class="demo-accounts-label">Demo accounts</div>
+            <div style="display: grid; grid-template-columns: 1fr;">
+              <button type="button" class="demo-chip-btn" onclick="fillReceptionCredential('1230821edits@gmail.com')" title="Central Admissions Desk">Central Reception Desk (REC001)</button>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" name="password" value="medintel123" class="form-control font-mono" placeholder="••••••••">
+        <!-- Password Field with Show/Hide Toggle -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label for="loginPasswordInput">Password</label>
+          <div class="password-input-wrap">
+            <input type="password" id="loginPasswordInput" name="password" value="medintel123" class="form-control font-mono" placeholder="••••••••" autocomplete="current-password" required style="padding-right: 36px;">
+            <button type="button" class="password-toggle-btn" id="btnTogglePassword" onclick="togglePasswordVisibility()" aria-label="Toggle password visibility" title="Show/Hide Password">
+              <svg id="eyeIconShow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg id="eyeIconHide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <button type="submit" class="btn-action btn-start" style="width: 100%; padding: 10px; margin-top: 12px; font-size: 12px;">
-          Sign In to Dashboard
+        <!-- Submit Button with --accent Blue & Loading State -->
+        <button type="submit" class="btn-submit-accent" id="btnLoginSubmit">
+          <span id="btnLoginSubmitText">Sign In to Dashboard</span>
+          <svg id="btnLoginSpinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none; animation: spin 1s linear infinite;">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+          </svg>
         </button>
       </form>
 
-      <div style="text-align: center; margin-top: 20px; border-top: 1px solid #1e293b; padding-top: 12px; font-size: 11px; color: #64748b;">
-        MEDINTEL v2.0.0 • Secured Single-Owner API Gateway
+      <!-- Standardized Secure Access Footer -->
+      <div style="text-align: center; margin-top: 22px; border-top: 1px solid var(--border); padding-top: 14px; font-size: 11px; color: var(--text-muted);">
+        Secure clinical access · v2.0.0
       </div>
     </div>
   </div>
 
   <script>
-    function switchRoleTab(role) {
-      document.getElementById('inputRole').value = role;
-      if (role === 'DOCTOR') {
-        document.getElementById('tabDoctor').classList.add('active');
-        document.getElementById('tabReception').classList.remove('active');
-        document.getElementById('fieldDoctor').style.display = 'block';
-        document.getElementById('fieldReception').style.display = 'none';
-      } else {
-        document.getElementById('tabReception').classList.add('active');
-        document.getElementById('tabDoctor').classList.remove('active');
-        document.getElementById('fieldReception').style.display = 'block';
-        document.getElementById('fieldDoctor').style.display = 'none';
+    // Theme Management
+    (function initTheme() {
+      const saved = localStorage.getItem('medintel_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+      updateThemeIcons(saved);
+    })();
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('medintel_theme', next);
+      updateThemeIcons(next);
+    }
+
+    function updateThemeIcons(theme) {
+      const sun = document.getElementById('themeIconSun');
+      const moon = document.getElementById('themeIconMoon');
+      if (sun && moon) {
+        if (theme === 'light') {
+          sun.style.display = 'none';
+          moon.style.display = 'block';
+        } else {
+          sun.style.display = 'block';
+          moon.style.display = 'none';
+        }
       }
+    }
+
+    // Role Segmented Tabs (Keyboard Accessible)
+    function switchRoleTab(role) {
+      const inputRole = document.getElementById('inputRole');
+      const tabDoc = document.getElementById('tabDoctor');
+      const tabRec = document.getElementById('tabReception');
+      const fieldDoc = document.getElementById('fieldDoctor');
+      const fieldRec = document.getElementById('fieldReception');
+
+      if (inputRole) inputRole.value = role;
+
+      if (role === 'DOCTOR') {
+        if (tabDoc) {
+          tabDoc.classList.add('active');
+          tabDoc.setAttribute('aria-selected', 'true');
+        }
+        if (tabRec) {
+          tabRec.classList.remove('active');
+          tabRec.setAttribute('aria-selected', 'false');
+        }
+        if (fieldDoc) fieldDoc.style.display = 'block';
+        if (fieldRec) fieldRec.style.display = 'none';
+      } else {
+        if (tabRec) {
+          tabRec.classList.add('active');
+          tabRec.setAttribute('aria-selected', 'true');
+        }
+        if (tabDoc) {
+          tabDoc.classList.remove('active');
+          tabDoc.setAttribute('aria-selected', 'false');
+        }
+        if (fieldRec) fieldRec.style.display = 'block';
+        if (fieldDoc) fieldDoc.style.display = 'none';
+      }
+    }
+
+    // Arrow key navigation for role tabs
+    const roleTablist = document.querySelector('[role="tablist"]');
+    if (roleTablist) {
+      roleTablist.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          const currentRole = document.getElementById('inputRole')?.value;
+          const nextRole = currentRole === 'DOCTOR' ? 'RECEPTIONIST' : 'DOCTOR';
+          switchRoleTab(nextRole);
+          document.getElementById(nextRole === 'DOCTOR' ? 'tabDoctor' : 'tabReception')?.focus();
+        }
+      });
+    }
+
+    // Demo Autofill Helpers
+    function fillCredential(email) {
+      const input = document.getElementById('doctorEmailInput');
+      if (input) input.value = email;
+    }
+
+    function fillReceptionCredential(username) {
+      const input = document.getElementById('receptionEmailInput');
+      if (input) input.value = username;
+    }
+
+    // Show/Hide Password
+    function togglePasswordVisibility() {
+      const input = document.getElementById('loginPasswordInput');
+      const eyeShow = document.getElementById('eyeIconShow');
+      const eyeHide = document.getElementById('eyeIconHide');
+      if (!input) return;
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (eyeShow) eyeShow.style.display = 'none';
+        if (eyeHide) eyeHide.style.display = 'block';
+      } else {
+        input.type = 'password';
+        if (eyeShow) eyeShow.style.display = 'block';
+        if (eyeHide) eyeHide.style.display = 'none';
+      }
+    }
+
+    // Form Submission & Loading State
+    function handleLoginSubmit(e) {
+      const btn = document.getElementById('btnLoginSubmit');
+      const text = document.getElementById('btnLoginSubmitText');
+      const spinner = document.getElementById('btnLoginSpinner');
+      if (btn) btn.disabled = true;
+      if (text) text.textContent = 'Verifying Credentials...';
+      if (spinner) spinner.style.display = 'inline-block';
     }
   </script>
 </body>
