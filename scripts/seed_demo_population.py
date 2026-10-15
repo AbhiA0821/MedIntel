@@ -16,7 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import duckdb
-from database.connection import DB_PATH
+from database.connection import get_db_path
 
 DEMO_DOCTORS = [
     ("DOC001", "Dr. Viraj Patil", "dr.viraj@medintel.org", "FB-DOC001", "CARDIOLOGY", "DOCTOR", True),
@@ -77,15 +77,16 @@ def _seed_authorized_doctors(con):
             """, [doc_id, name, email, fb_uid, specialty, role, active, datetime.now()])
 
 
-def seed_demo_population(force: bool = False):
-    con = duckdb.connect(str(DB_PATH))
+def seed_demo_population(force: bool = False, db_path=None):
+    target_path = Path(db_path) if db_path else get_db_path()
+    con = duckdb.connect(str(target_path))
     try:
         print("Ensuring schema integrity...")
         # Check if tables exist
         tables = [t[0] for t in con.execute("SHOW TABLES").fetchall()]
         if "Patients" not in tables:
             from database.setup_database import init_database
-            init_database(DB_PATH)
+            init_database(target_path)
 
         # Check Patients schema and add specialty column if missing
         cols = [c[1] for c in con.execute("PRAGMA table_info('Patients');").fetchall()]

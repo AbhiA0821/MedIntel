@@ -1,0 +1,31 @@
+# ==============================================================================
+# MedIntel Production Runtime Dependencies (FastAPI + Flask + DuckDB + Services)
+# ==============================================================================
+
+# Web Frameworks & ASGI/WSGI Production Servers
+fastapi==0.141.1
+uvicorn==0.52.3
+gunicorn==23.0.0
+Flask==2.2.5
+Werkzeug==2.2.3
+requests==2.34.2
+python-dotenv==1.2.2
+python-multipart==0.0.20
+
+# Database & Analytics
+duckdb==1.5.4
+numpy==2.5.1
+pandas==3.0.3
+
+# Data Validation & Schemas
+pydantic==2.13.4
+pydantic-settings==2.15.0
+PyJWT==2.10.1
+
+# Cloud, AI, and Notification Integrations
+google-auth>=2.20.0
+firebase-admin==7.5.0
+groq==1.6.0
+qdrant-client==1.19.0
+kafka-python==3.0.10
+prefect
