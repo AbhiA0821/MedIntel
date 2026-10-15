@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">MEDINTEL Doctor</string>
+    <string name="channel_critical_name">Critical Patient Alerts</string>
+    <string name="channel_critical_description">High-priority sound and speech alerts for critical patients</string>
+</resources>

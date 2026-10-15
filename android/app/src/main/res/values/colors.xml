@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background & Surface Neutral Slate Tokens (Calm until critical) -->
+    <color name="primary_dark">#0B1220</color>
+    <color name="surface_dark">#111A2E</color>
+    <color name="surface_variant">#16213A</color>
+    <color name="border_neutral">#24314D</color>
+
+    <!-- Clinical Severity Tokens -->
+    <color name="critical_red">#EF4444</color>
+    <color name="moderate_amber">#F59E0B</color>
+    <color name="low_green">#22C55E</color>
+    <color name="info_cyan">#38BDF8</color>
+
+    <!-- Interaction Accent -->
+    <color name="accent_blue">#3B82F6</color>
+
+    <!-- Text Hierarchy Tokens (WCAG AA) -->
+    <color name="text_light">#E6EBF5</color>
+    <color name="text_muted">#9AA7BF</color>
+    <color name="text_faint">#6B7893</color>
+</resources>

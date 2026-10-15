@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MEDINTEL — {{ user.specialty }} Clinical Command Center</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Navbar Header (Shared Shell) -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-icon-svg">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="brand-title">MEDINTEL</span>
+            <span class="badge-scope-specialty">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="m4.93 4.93 4.24 4.24"></path>
+                <path d="m14.83 9.17 4.24-4.24"></path>
+                <path d="m14.83 14.83 4.24 4.24"></path>
+                <path d="m9.17 14.83-4.24 4.24"></path>
+                <circle cx="12" cy="12" r="4"></circle>
+              </svg>
+              My specialty
+            </span>
+          </div>
+          <div class="brand-sub">{{ user.doctor_name }}</div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div>
+          <h1>{{ user.specialty }} Command Center</h1>
+          <p>Real-time physiological telemetry, patient worklist &amp; decision support</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Freshness Chip (Safe Elapsed Time) -->
+        <div id="dataFreshnessChip" class="status-chip live" title="Real-time vital telemetry freshness">
+          <span class="status-dot"></span>
+          <span id="dataFreshnessText" class="font-mono">Live · updated 0s ago</span>
+        </div>
+
+        <!-- Single System Status Chip with Popover Trigger -->
+        <div class="popover-anchor">
+          <button type="button" class="status-chip interactive" id="systemStatusChip" onclick="toggleDoctorStatusPopover()" aria-haspopup="true" aria-expanded="false" title="View System Status, Voice Controls &amp; Mobile Dispatch">
+            <span class="status-dot"></span>
+            <span>System Status</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <!-- System Status Popover Dropdown -->
+          <div class="popover-menu" id="doctorStatusPopover">
+            <div class="popover-header">Clinical Telemetry &amp; Dispatch</div>
+
+            <!-- Live Monitoring Status -->
+            <div class="popover-row">
+              <span style="display:flex; align-items:center; gap:6px; font-weight:600;">
+                <span class="status-dot"></span> Telemetry Stream
+              </span>
+              <span style="font-size:10px; font-weight:700; color:var(--low);">ACTIVE</span>
+            </div>
+
+            <!-- Mobile Push Status -->
+            <div class="popover-row" onclick="testDoctorNotification()" style="cursor:pointer;" title="Click to test Mobile Push (FCM)">
+              <span style="display:flex; align-items:center; gap:6px; font-weight:600;">
+                <span class="status-dot"></span> Emergency Push (FCM)
+              </span>
+              <div class="push-badge" id="pushSubBadge" style="margin:0; padding:2px 6px;">
+                <span style="color:var(--low); font-weight:700; font-size:9.5px;">READY</span>
+                <span style="background:var(--critical); color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; margin-left:4px;" id="pushBadgeCount">0</span>
+              </div>
+            </div>
+
+            <!-- Voice Controls & Status -->
+            <div class="popover-row" style="flex-direction:column; align-items:stretch; gap:6px; background:var(--surface-2); padding:8px; border-radius:6px;">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div id="voiceAlertBadge" onclick="toggleVoiceAlerts()" style="cursor:pointer; display:flex; align-items:center; gap:6px;" title="Toggle Workstation Voice Announcements">
+                  <span class="status-dot" id="voiceAlertDot"></span>
+                  <span style="font-weight:600;">Voice Alerts:</span>
+                  <span id="voiceAlertStatus" style="font-weight:700; color:var(--low);">ACTIVE</span>
+                </div>
+                <span id="voiceBarStatus" style="font-size:10px; font-weight:700; color:var(--low);">ACTIVE</span>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="btn-db" id="btnTestVoice" onclick="playTestVoice()" style="flex:1; padding:4px 8px; font-size:10px; text-align:center;">Test Voice</button>
+                <button type="button" class="btn-db" onclick="toggleVoiceAlerts()" style="flex:1; padding:4px 8px; font-size:10px; text-align:center;">Mute / Unmute</button>
+              </div>
+              <div style="font-size:10px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                <span id="voiceSpeakingLabel">Idle — Listening for Critical Telemetry</span>
+                <span id="voiceSpeakingBox" class="voice-speaking-box idle" style="display:none;"><span id="voiceSpeakingDot" class="status-dot"></span></span>
+              </div>
+              <!-- Hidden preserved elements for voice queue contract -->
+              <div id="voiceQueueTagsContainer" style="display:none;"><span class="voice-tag">None</span></div>
+              <div style="display:none;"><span id="voiceLastSpokenTag">None</span><button type="button" id="btnUnlockVoiceBar"></button></div>
+            </div>
+
+            <!-- Preserved Compatibility Timestamps -->
+            <div class="popover-row font-mono" style="font-size:10px; color:var(--text-muted); border-top:1px solid var(--border); padding-top:6px;">
+              <span>Authoritative DB Sync:</span>
+              <span id="kpiLastUpdate" style="color:var(--text); font-weight:700;">--:--:--</span>
+              <span id="sidebarLastUpdate" style="display:none;">--:--:--</span>
+              <span id="serverClock" style="display:none;">--:--:--</span>
+              <span id="liveStatusBadge" style="display:none;">LIVE</span>
+              <span id="streamCycleCount" style="display:none;">0</span>
+              <span id="kpiActiveAlerts" style="display:none;">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Theme Toggle Button -->
+        <button type="button" class="btn-icon-toggle" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle light/dark theme" title="Switch Light / Dark Theme">
+          <svg id="themeIconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg id="themeIconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+
+        <!-- Live Clock -->
+        <div class="header-clock font-mono">
+          <span id="liveClock">--:--:--</span>
+        </div>
+
+        <!-- Doctor Profile Badge -->
+        <div class="user-profile" onclick="switchNavTab('profile')" style="cursor: pointer;" title="View Doctor Profile">
+          <div class="user-avatar" id="headerAvatar">DR</div>
+          <div>
+            <div style="font-weight:700; color:var(--text); font-size:11px;">{{ user.doctor_name }}</div>
+            <div style="font-size:9.5px; color:var(--text-muted);">{{ user.doctor_id }} • {{ user.specialty }}</div>
+          </div>
+        </div>
+
+        <!-- Sign Out -->
+        <a href="{{ url_for('logout') }}" class="btn-logout" title="Sign Out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Shell -->
+    <div class="main-layout">
+      <!-- Left Persistent Sidebar Navigation (Navigation Only) -->
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="section-label">CLINICAL INTELLIGENCE</div>
+          <nav class="nav-menu">
+            <a class="nav-item active" id="navOverview" onclick="switchNavTab('overview')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+              </span>
+              <span>Overview</span>
+            </a>
+
+            <a class="nav-item" id="navCritical" onclick="switchNavTab('critical')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              </span>
+              <span>Critical Patients</span>
+              <span class="nav-badge danger font-mono" id="navCriticalBadge">0</span>
+            </a>
+
+            <a class="nav-item" id="navAlerts" onclick="switchNavTab('alerts')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              </span>
+              <span>Active Alerts</span>
+            </a>
+
+            <a class="nav-item" id="navMonitoring" onclick="switchNavTab('monitoring')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+              </span>
+              <span>Patient Monitoring</span>
+            </a>
+
+            <a class="nav-item" id="navInsights" onclick="switchNavTab('insights')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </span>
+              <span>Clinical Insights</span>
+            </a>
+
+            <a class="nav-item" id="navNotifications" onclick="switchNavTab('notifications')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              </span>
+              <span>Notifications</span>
+            </a>
+
+            <a class="nav-item" id="navProfile" onclick="switchNavTab('profile')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </span>
+              <span>Doctor Profile</span>
+            </a>
+          </nav>
+        </div>
+
+        <div class="sidebar-footer">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="user-avatar" id="footerAvatar" style="width: 28px; height: 28px; font-size: 10px;">DR</div>
+            <div>
+              <div style="font-weight: 700; color: var(--text); font-size: 11px;">{{ user.doctor_name }}</div>
+              <div style="font-size: 9.5px; color: var(--text-muted);">{{ user.specialty }} Specialist</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Operational Viewport -->
+      <main class="content-area">
+        <!-- ============================================================
+             SECTION 1: OVERVIEW & CLINICAL WORKLIST (FULL WIDTH)
+             ============================================================ -->
+        <div id="sectionOverview" class="dashboard-section">
+          <!-- 4 Equal KPI Cards (Clickable Severity Filters for Worklist) -->
+          <div class="kpi-row" style="grid-template-columns: repeat(4, 1fr);">
+            <!-- 1. Critical Patients -->
+            <div class="kpi-card" id="kpiCardCritical" onclick="filterDoctorBySeverity('CRITICAL')" title="Click to filter by Critical patients">
+              <div class="kpi-icon-wrap red">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <div class="kpi-content">
+                <div class="kpi-label">CRITICAL PATIENTS</div>
+                <div class="kpi-val critical-val" id="kpiCriticalCount">0</div>
+                <div class="kpi-sub" style="color:var(--critical);">Immediate Interventions</div>
+              </div>
+            </div>
+
+            <!-- 2. Moderate Patients -->
+            <div class="kpi-card" id="kpiCardModerate" onclick="filterDoctorBySeverity('MODERATE')" title="Click to filter by Moderate patients">
+              <div class="kpi-icon-wrap orange">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              </div>
+              <div class="kpi-content">
+                <div class="kpi-label">MODERATE PATIENTS</div>
+                <div class="kpi-val moderate-val" id="kpiModerateCount">0</div>
+                <div class="kpi-sub">Clinical Observation</div>
+              </div>
+            </div>
+
+            <!-- 3. Stable / Low Risk Patients -->
+            <div class="kpi-card" id="kpiCardLow" onclick="filterDoctorBySeverity('LOW')" title="Click to filter by Low Risk patients">
+              <div class="kpi-icon-wrap green">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              </div>
+              <div class="kpi-content">
+                <div class="kpi-label">STABLE / LOW RISK</div>
+                <div class="kpi-val low-val" id="kpiLowCount">0</div>
+                <div class="kpi-sub">Within Target Baseline</div>
+              </div>
+            </div>
+
+            <!-- 4. Total Assigned Patients -->
+            <div class="kpi-card" id="kpiCardTotal" onclick="filterDoctorBySeverity('All Severity')" title="Click to view all assigned patients">
+              <div class="kpi-icon-wrap blue">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </div>
+              <div class="kpi-content">
+                <div class="kpi-label">ASSIGNED PATIENTS</div>
+                <div class="kpi-val" id="kpiTotalPatients">0</div>
+                <div class="kpi-sub">{{ user.specialty }} Census</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Clinical Worklist Panel (Replaces old card grid) -->
+          <div class="panel" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+            <!-- Sticky Header & Toolbar -->
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <h2 class="panel-title">
+                  <span>{{ user.specialty }} Inpatient Worklist</span>
+                  <span class="count-pill font-mono" id="patientTableCount">0</span>
+                </h2>
+                <span class="toolbar-status-text" id="doctorFilterStatus">Showing all authorized patients</span>
+              </div>
+
+              <!-- Comprehensive Toolbar -->
+              <div class="toolbar">
+                <!-- Search input -->
+                <div class="search-input-wrap">
+                  <svg class="search-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input type="text" id="searchInput" class="search-input font-mono" placeholder="Search by name or ID..." oninput="onDoctorSearchDebounced()">
+                </div>
+
+                <!-- Severity Filter Chips -->
+                <div class="severity-chips-group">
+                  <button type="button" class="severity-chip-btn active" id="chipDoctorAll" onclick="setDoctorSeverityFilter('All Severity')">All</button>
+                  <button type="button" class="severity-chip-btn" id="chipDoctorCritical" onclick="setDoctorSeverityFilter('CRITICAL')">Critical</button>
+                  <button type="button" class="severity-chip-btn" id="chipDoctorModerate" onclick="setDoctorSeverityFilter('MODERATE')">Moderate</button>
+                  <button type="button" class="severity-chip-btn" id="chipDoctorLow" onclick="setDoctorSeverityFilter('LOW')">Stable</button>
+                </div>
+
+                <!-- Ward Filter Select -->
+                <select id="wardFilter" class="filter-select" onchange="renderDoctorWorklist()">
+                  <option value="All Wards">All Wards</option>
+                  <option value="ICU">ICU</option>
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Pulmonology">Pulmonology</option>
+                  <option value="General Medicine">General Medicine</option>
+                </select>
+
+                <!-- Sort Select -->
+                <select id="sortSelect" class="filter-select" onchange="renderDoctorWorklist()">
+                  <option value="severity">Sort: Severity</option>
+                  <option value="name">Sort: Name</option>
+                  <option value="id">Sort: Patient ID</option>
+                  <option value="room">Sort: Room / Bed</option>
+                  <option value="updated">Sort: Last Update</option>
+                </select>
+
+                <!-- Clear Filters -->
+                <button type="button" class="btn-clear-filters" id="btnClearFilters" onclick="resetDoctorFilters()">Clear</button>
+              </div>
+            </div>
+
+            <!-- Scrollable Table Body (Keyed Diff/Patch) -->
+            <div class="panel-scroll-body" id="doctorWorklistScrollContainer">
+              <table class="medintel-table" id="doctorWorklistTable">
+                <thead>
+                  <tr>
+                    <th style="width: 140px;">Patient Name</th>
+                    <th style="width: 80px;">ID</th>
+                    <th style="width: 90px;">Age / Sex</th>
+                    <th style="width: 110px;">Location</th>
+                    <th style="width: 95px;">Severity</th>
+                    <th style="min-width: 220px;">Vitals Strip</th>
+                    <th style="width: 75px;">Updated</th>
+                    <th style="min-width: 220px;">Clinical AI Recommendation</th>
+                    <th style="width: 90px; text-align: center;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="patientTableBody">
+                  <!-- Worklist Rows Injected by JS -->
+                  <tr>
+                    <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                      <div class="skeleton-line" style="width: 50%; margin: 8px auto;"></div>
+                      <div class="skeleton-line" style="width: 30%; margin: 8px auto;"></div>
+                      Loading {{ user.specialty }} patient worklist...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Specialty Snapshot Section (Relocated from Sidebar) -->
+          <div class="specialty-snapshot-section">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <h3 style="font-size: 13px; font-weight: 800; color: var(--text);">Specialty Snapshot &amp; Clinical Analytics</h3>
+                <p style="font-size: 10.5px; color: var(--text-muted);">Real-time census distribution and clinical telemetry averages for {{ user.specialty }}</p>
+              </div>
+              <button type="button" class="btn-db primary" onclick="fetchAndRefreshDoctorMonitoring()" style="display:flex; align-items:center; gap:6px; font-size:11px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                Refresh Stream
+              </button>
+            </div>
+
+            <div class="specialty-snapshot-grid">
+              <!-- Severity Distribution -->
+              <div class="snapshot-card">
+                <div class="snapshot-card-title">Severity Breakdown</div>
+                <div style="display:flex; flex-direction:column; gap:4px; font-size:11px;">
+                  <div style="display:flex; justify-content:space-between;">
+                    <span style="color:var(--critical); font-weight:600;">Critical:</span>
+                    <strong class="font-mono" style="color:var(--critical);" id="sideSevCritical">0</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between;">
+                    <span style="color:var(--moderate); font-weight:600;">Moderate:</span>
+                    <strong class="font-mono" style="color:var(--moderate);" id="sideSevModerate">0</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between;">
+                    <span style="color:var(--low); font-weight:600;">Stable / Low:</span>
+                    <strong class="font-mono" style="color:var(--low);" id="sideSevLow">0</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ward Occupancy -->
+              <div class="snapshot-card">
+                <div class="snapshot-card-title">Ward Occupancy</div>
+                <div id="doctorWardOccupancyList" style="font-size:11px; display:flex; flex-direction:column; gap:4px;">
+                  <div style="display:flex; justify-content:space-between;">
+                    <span>ICU:</span>
+                    <strong class="font-mono" id="occIcu">0</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between;">
+                    <span>Specialty Ward:</span>
+                    <strong class="font-mono" id="occWard">0</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cohort Averages -->
+              <div class="snapshot-card">
+                <div class="snapshot-card-title">Telemetry Averages</div>
+                <div style="font-size:11px; display:flex; flex-direction:column; gap:4px;">
+                  <div style="display:flex; justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Avg SpO₂:</span>
+                    <strong class="font-mono" id="avgSpo2">--%</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between;">
+                    <span style="color:var(--text-muted);">Avg Heart Rate:</span>
+                    <strong class="font-mono" id="avgHr">-- bpm</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 2: CRITICAL PATIENTS (DIRECT VIEW)
+             ============================================================ -->
+        <div id="sectionCritical" class="dashboard-section hidden">
+          <div class="panel" style="height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <h2 class="panel-title">Critical Patients — {{ user.specialty }}</h2>
+                  <span class="count-pill critical font-mono" id="criticalHeaderCount">0</span>
+                </div>
+                <span class="badge-severity CRITICAL font-mono" style="font-size:10.5px; padding:3px 8px;">HIGH CLINICAL PRIORITY</span>
+              </div>
+            </div>
+            <div class="panel-scroll-body" id="criticalPatientsList">
+              <!-- Rendered dynamically -->
+              <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                <div class="skeleton-line" style="width: 50%; margin: 8px auto;"></div>
+                <div class="skeleton-line" style="width: 30%; margin: 8px auto;"></div>
+                Loading critical patients...
+              </div>
+            </div>
+            <!-- Preserved compatibility container -->
+            <div id="criticalDirectList" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 3: ACTIVE ALERTS FEED
+             ============================================================ -->
+        <div id="sectionAlerts" class="dashboard-section hidden">
+          <div class="panel" style="height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <h2 class="panel-title">Active Clinical Alerts Feed</h2>
+                <span id="alertsFeedCountBadge" class="badge-severity CRITICAL font-mono" style="font-size: 10px; padding: 3px 8px;">0 ACTIVE</span>
+              </div>
+            </div>
+            <div class="panel-scroll-body">
+              <table class="medintel-table" id="alertsFeedTable">
+                <thead>
+                  <tr>
+                    <th>Alert ID</th>
+                    <th>Patient</th>
+                    <th>Location</th>
+                    <th>Primary Finding</th>
+                    <th>Severity</th>
+                    <th>Assigned Doctor</th>
+                    <th>Time</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="alertsFeedTableBody">
+                  <tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--text-muted);">Loading clinical alerts...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 4: COMPLETE PATIENT MONITORING STREAM
+             ============================================================ -->
+        <div id="sectionMonitoring" class="dashboard-section hidden">
+          <div class="panel" style="height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <h2 class="panel-title">Inpatient Physiological Telemetry Stream</h2>
+              </div>
+            </div>
+            <div class="panel-scroll-body">
+              <table class="medintel-table">
+                <thead>
+                  <tr>
+                    <th>Patient ID</th>
+                    <th>Name</th>
+                    <th>Location</th>
+                    <th>Heart Rate</th>
+                    <th>SpO₂</th>
+                    <th>Temp</th>
+                    <th>Blood Pressure</th>
+                    <th>Resp Rate</th>
+                    <th>Severity</th>
+                    <th>Trend</th>
+                  </tr>
+                </thead>
+                <tbody id="monitoringTableBody">
+                  <tr><td colspan="10" style="text-align:center; padding: 20px; color: var(--text-muted);">Loading monitored cohort...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 5: AI CLINICAL INSIGHTS
+             ============================================================ -->
+        <div id="sectionInsights" class="dashboard-section hidden">
+          <div class="panel" style="height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <h2 class="panel-title">AI Clinical Insights &amp; Decision Support</h2>
+              </div>
+            </div>
+            <div class="panel-scroll-body" style="padding: 16px;">
+              <div id="aiInsightsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px;">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 6: NOTIFICATIONS & MOBILE DEVICE STATUS
+             ============================================================ -->
+        <div id="sectionNotifications" class="dashboard-section hidden">
+          <div class="panel" style="max-width: 800px; height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <h2 class="panel-title">Doctor Mobile Push Notifications (FCM)</h2>
+              </div>
+            </div>
+            <div class="panel-scroll-body" style="padding: 16px;">
+              <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <strong style="color:var(--text); font-size:12.5px;">Mobile On-Call Dispatch</strong>
+                    <div style="font-size:10.5px; color:var(--text-muted); margin-top:2px;">Doctor: {{ user.doctor_name }} • Specialty: {{ user.specialty }}</div>
+                  </div>
+                  <button type="button" class="btn-db primary" onclick="testDoctorNotification()">
+                    Send Test Mobile Push
+                  </button>
+                </div>
+              </div>
+
+              <div class="section-label">REGISTERED MOBILE DEVICES</div>
+              <div id="doctorDevicesList" style="font-size: 11px;">
+                <div style="padding: 10px; color: var(--text-muted);">Fetching registered devices...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 7: DOCTOR PROFILE & AUTHORIZATION
+             ============================================================ -->
+        <div id="sectionProfile" class="dashboard-section hidden">
+          <div class="panel" style="max-width: 600px; height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <h2 class="panel-title">Physician Profile &amp; Authorized Scope</h2>
+              </div>
+            </div>
+            <div class="panel-scroll-body" style="padding: 16px;">
+              <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 16px;">
+                <div class="user-avatar" style="width: 50px; height: 50px; font-size: 18px;" id="profileAvatar">DR</div>
+                <div>
+                  <h3 style="font-size: 16px; font-weight: 800; color: var(--text);">{{ user.doctor_name }}</h3>
+                  <div style="font-size: 12px; color: var(--accent); font-weight: 700;">{{ user.specialty }} Specialist</div>
+                  <div style="font-size: 10px; color: var(--text-muted);">Staff ID: {{ user.doctor_id }} • Role: {{ user.role }}</div>
+                </div>
+              </div>
+
+              <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 11.5px; line-height: 1.8;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:6px;">
+                  <span style="color:var(--text-muted);">Authorized Specialty:</span>
+                  <strong class="font-mono" style="color:var(--text);">{{ user.specialty }}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding: 6px 0;">
+                  <span style="color:var(--text-muted);">Authenticated Email:</span>
+                  <span class="font-mono" style="color:var(--text);">{{ user.email }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding: 6px 0;">
+                  <span style="color:var(--text-muted);">Authentication Provider:</span>
+                  <span style="color:var(--info); font-weight:700; text-transform:uppercase;">{{ user.auth_provider or 'Google OAuth' }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding-top:6px;">
+                  <span style="color:var(--text-muted);">Authorization Scope:</span>
+                  <span style="color:var(--low); font-weight:700;">Authorized Clinical Specialty Isolation</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Standardized Footer -->
+        <footer class="app-footer">
+          MEDINTEL · v2.0.0
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <!-- Patient Detail Telemetry Slide-Over Drawer (Preserved Contract IDs) -->
+  <div id="patientDrawer" class="drawer-content" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="patient-id-badge font-mono" id="drawerPid" style="font-size:13px; font-weight:800; color:var(--accent);">--</span>
+          <h2 style="font-size: 15px; font-weight: 800; color: var(--text); margin:0;" id="drawerName">--</h2>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top:2px;" id="drawerDemographics">--</div>
+      </div>
+      <button type="button" onclick="closePatientDrawer()" style="background:none; border:none; color: var(--text-muted); cursor:pointer; display:flex; align-items:center;" aria-label="Close drawer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div style="margin-top: 14px; display:flex; flex-direction:column; gap:12px;">
+      <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 11px; color: var(--text);" id="drawerWardRoom">--</div>
+        <div style="font-size: 11px; color: var(--text); margin-top: 4px;">
+          Doctor Assigned: <strong id="drawerDoctor" style="color: var(--accent);">--</strong> (<span id="drawerSpecialty">--</span>)
+        </div>
+        <div style="font-size: 10px; font-weight: 700; margin-top: 4px;">
+          Severity Status: <span id="drawerSeverityBadge" class="badge-severity CRITICAL font-mono" style="font-size:9.5px; padding:2px 6px;">CRITICAL</span>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 10px; color: var(--text-faint); text-transform: uppercase; font-weight:700; margin-bottom:6px;">Current Physiological Telemetry</h4>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">Heart Rate</div>
+            <div style="font-size: 14px; font-weight: 800; color: var(--text);" class="font-mono" id="drawerHr">--</div>
+          </div>
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">SpO₂</div>
+            <div style="font-size: 14px; font-weight: 800; color: var(--critical);" class="font-mono" id="drawerSpo2">--</div>
+          </div>
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">Temp</div>
+            <div style="font-size: 14px; font-weight: 800; color: var(--critical);" class="font-mono" id="drawerTemp">--</div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px;">
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">Blood Pressure</div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text);" class="font-mono" id="drawerBp">--</div>
+          </div>
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">Respiratory Rate</div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text);" class="font-mono" id="drawerRr">--</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 10px; color: var(--text-faint); text-transform: uppercase; font-weight:700; margin-bottom:6px;">AI Recommendation &amp; Clinical Reasoning</h4>
+        <div style="background: var(--surface-2); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
+          <div style="color: var(--moderate); font-weight: 700; font-size: 11.5px;" id="drawerReason">--</div>
+          <div style="color: var(--info); font-size: 11px; margin-top: 6px; line-height: 1.4;" id="drawerRec">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script>
+    // -------------------------------------------------------------
+    // Doctor Clinical Command Center Controller
+    // -------------------------------------------------------------
+    window.isDoctorDashboard = true;
+    const DOCTOR_SPECIALTY = '{{ user.specialty or "CARDIOLOGY" }}';
+    const DOCTOR_ID = '{{ user.doctor_id or "DOC001" }}';
+    const DOCTOR_NAME = '{{ user.doctor_name or "Doctor" }}';
+
+    let doctorVoiceQueueTimer = null;
+    let isDoctorMonitoringRefreshing = false;
+    let doctorMonitoringRefreshTimer = null;
+    let expandedRecs = new Set();
+
+    // Theme Management
+    (function initTheme() {
+      const saved = localStorage.getItem('medintel_theme') || localStorage.getItem('medintel-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+      updateDoctorThemeIcons(saved);
+    })();
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('medintel_theme', next);
+      localStorage.setItem('medintel-theme', next);
+      updateDoctorThemeIcons(next);
+    }
+
+    function updateDoctorThemeIcons(theme) {
+      const sun = document.getElementById('themeIconSun');
+      const moon = document.getElementById('themeIconMoon');
+      if (sun && moon) {
+        if (theme === 'light') {
+          sun.style.display = 'none';
+          moon.style.display = 'block';
+        } else {
+          sun.style.display = 'block';
+          moon.style.display = 'none';
+        }
+      }
+    }
+
+    // System Status Popover Controller
+    function toggleDoctorStatusPopover() {
+      const pop = document.getElementById('doctorStatusPopover');
+      const btn = document.getElementById('systemStatusChip');
+      if (!pop) return;
+      const isOpen = pop.classList.contains('open');
+      if (isOpen) {
+        pop.classList.remove('open');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      } else {
+        pop.classList.add('open');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    document.addEventListener('click', (e) => {
+      const pop = document.getElementById('doctorStatusPopover');
+      const btn = document.getElementById('systemStatusChip');
+      if (pop && pop.classList.contains('open')) {
+        if (!pop.contains(e.target) && !btn.contains(e.target)) {
+          pop.classList.remove('open');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+
+    // Init Avatar initials and start live stream + voice queue
+    document.addEventListener('DOMContentLoaded', () => {
+      const initials = (DOCTOR_NAME.split(' ').map(n => n[0]).join('') || 'DR').substring(0, 2).toUpperCase();
+      ['headerAvatar', 'footerAvatar', 'profileAvatar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = initials;
+      });
+
+      // Initialize persistent voice queue for this doctor's specialty (500ms)
+      initDoctorVoiceQueue();
+
+      // Initialize live monitoring stream refresh loop (1000ms)
+      initDoctorLiveRefresh();
+    });
+
+    // Navigation Switcher
+    function switchNavTab(tabName) {
+      const tabs = ['overview', 'critical', 'alerts', 'monitoring', 'insights', 'notifications', 'profile'];
+      tabs.forEach(t => {
+        const navEl = document.getElementById('nav' + t.charAt(0).toUpperCase() + t.slice(1));
+        const secEl = document.getElementById('section' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (navEl) {
+          if (t === tabName) navEl.classList.add('active');
+          else navEl.classList.remove('active');
+        }
+        if (secEl) {
+          if (t === tabName) secEl.classList.remove('hidden');
+          else secEl.classList.add('hidden');
+        }
+      });
+      if (tabName === 'notifications') {
+        fetchDoctorDevices();
+      }
+    }
+
+    // Live Doctor Monitoring Stream Controller
+    async function fetchAndRefreshDoctorMonitoring() {
+      if (isDoctorMonitoringRefreshing) return;
+      isDoctorMonitoringRefreshing = true;
+      try {
+        const [vitalsRes, alertsRes] = await Promise.all([
+          fetch(`/api/v1/live_vitals?doctor_id=${encodeURIComponent(DOCTOR_ID)}&specialty=${encodeURIComponent(DOCTOR_SPECIALTY)}`),
+          fetch('/api/v1/alerts/active').catch(() => null)
+        ]);
+
+        if (!vitalsRes.ok) return;
+        const data = await vitalsRes.json();
+        allPatients = data.patients || [];
+
+        if (alertsRes && alertsRes.ok) {
+          const alertData = await alertsRes.json();
+          activeAlertsList = alertData.alerts || [];
+        }
+
+        // Scoped Counts for Doctor Specialty
+        const scopedCritical = allPatients.filter(p => p.severity === 'CRITICAL').length;
+        const scopedModerate = allPatients.filter(p => p.severity === 'MODERATE').length;
+        const scopedLow = allPatients.filter(p => p.severity === 'LOW').length;
+        const scopedTotal = allPatients.length;
+
+        setText('kpiCriticalCount', scopedCritical);
+        setText('kpiModerateCount', scopedModerate);
+        setText('kpiLowCount', scopedLow);
+        setText('kpiTotalPatients', scopedTotal);
+
+        // Sidebar/Snapshot Distribution
+        setText('sideSevCritical', scopedCritical);
+        setText('sideSevModerate', scopedModerate);
+        setText('sideSevLow', scopedLow);
+
+        // Compute Ward Occupancy & Averages
+        updateDoctorAnalytics(allPatients);
+
+        // Update Timestamps & Freshness Chip
+        const lastUp = data.latest_db_update || new Date().toLocaleTimeString();
+        setText('kpiLastUpdate', lastUp);
+        setText('sidebarLastUpdate', lastUp);
+        updateFreshnessChip(data.latest_db_update);
+
+        // Render Doctor Views
+        renderDoctorDashboardViews();
+      } catch (err) {
+        console.error('[MONITOR] Refresh error:', err);
+      } finally {
+        isDoctorMonitoringRefreshing = false;
+      }
+    }
+
+    function updateDoctorAnalytics(patients) {
+      if (!patients || patients.length === 0) return;
+      const icuCount = patients.filter(p => (p.ward || '').toUpperCase() === 'ICU').length;
+      const wardCount = patients.length - icuCount;
+      setText('occIcu', `${icuCount} Patients`);
+      setText('occWard', `${wardCount} Patients`);
+
+      const validSpo2 = patients.filter(p => p.spo2 !== undefined && p.spo2 !== null);
+      if (validSpo2.length > 0) {
+        const avgSpo2 = Math.round(validSpo2.reduce((acc, p) => acc + Number(p.spo2), 0) / validSpo2.length);
+        setText('avgSpo2', `${avgSpo2}%`);
+      }
+
+      const validHr = patients.filter(p => p.heart_rate !== undefined && p.heart_rate !== null);
+      if (validHr.length > 0) {
+        const avgHr = Math.round(validHr.reduce((acc, p) => acc + Number(p.heart_rate), 0) / validHr.length);
+        setText('avgHr', `${avgHr} bpm`);
+      }
+    }
+
+    function initDoctorLiveRefresh() {
+      if (doctorMonitoringRefreshTimer) {
+        clearInterval(doctorMonitoringRefreshTimer);
+        doctorMonitoringRefreshTimer = null;
+      }
+      doctorMonitoringRefreshTimer = setInterval(fetchAndRefreshDoctorMonitoring, 1000);
+      fetchAndRefreshDoctorMonitoring();
+    }
+
+    // Voice Queue Manager
+    let doctorVoiceQueueInstance = null;
+    function initDoctorVoiceQueue() {
+      if (doctorVoiceQueueTimer) {
+        clearInterval(doctorVoiceQueueTimer);
+        doctorVoiceQueueTimer = null;
+      }
+      doctorVoiceQueueInstance = new VoiceAlertQueue(DOCTOR_SPECIALTY, updateDoctorVoiceUI);
+      doctorVoiceQueueTimer = setInterval(() => {
+        if (doctorVoiceQueueInstance) doctorVoiceQueueInstance.poll();
+      }, 500);
+      doctorVoiceQueueInstance.poll();
+    }
+
+    function updateDoctorVoiceUI(state) {
+      const badgeStatus = document.getElementById('voiceAlertStatus');
+      const barStatus = document.getElementById('voiceBarStatus');
+      const badgeDot = document.getElementById('voiceAlertDot');
+      const speakingLabel = document.getElementById('voiceSpeakingLabel');
+
+      if (badgeStatus) {
+        badgeStatus.textContent = state.enabled ? 'ACTIVE' : 'MUTED';
+        badgeStatus.style.color = state.enabled ? 'var(--low)' : 'var(--text-muted)';
+      }
+      if (barStatus) {
+        barStatus.textContent = state.enabled ? 'ACTIVE' : 'MUTED';
+        barStatus.style.color = state.enabled ? 'var(--low)' : 'var(--text-muted)';
+      }
+      if (badgeDot) {
+        badgeDot.className = `status-dot ${state.enabled ? '' : 'red'}`;
+      }
+      if (speakingLabel) {
+        if (state.currentlySpeaking) {
+          const p = state.currentlySpeaking;
+          speakingLabel.innerHTML = `<span style="color:var(--critical); font-weight:700;">SPEAKING:</span> ${p.patient_id} ${p.vital_value || ''}`;
+        } else {
+          speakingLabel.textContent = state.enabled ? 'Idle — Listening for Critical Telemetry' : 'Audio Output Muted';
+        }
+      }
+    }
+
+    function toggleVoiceAlerts() {
+      if (doctorVoiceQueueInstance) doctorVoiceQueueInstance.toggle();
+    }
+
+    async function playTestVoice() {
+      if (doctorVoiceQueueInstance) doctorVoiceQueueInstance.unlockManually();
+      const btn = document.getElementById('btnTestVoice');
+      if (btn) btn.textContent = 'Testing...';
+      try {
+        const res = await fetch('/api/v1/alerts/voice/test');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.voice_alert && data.voice_alert.audio_url) {
+            const aud = new Audio(data.voice_alert.audio_url);
+            await aud.play();
+          }
+        }
+      } catch (e) {
+        console.warn('Test voice playback note:', e);
+      } finally {
+        if (btn) btn.textContent = 'Test Voice';
+      }
+    }
+
+    // Filter & Search Controls
+    let doctorSeverityFilter = 'All Severity';
+    let doctorSearchQuery = '';
+    let doctorSearchDebounceTimer = null;
+
+    function onDoctorSearchDebounced() {
+      clearTimeout(doctorSearchDebounceTimer);
+      doctorSearchDebounceTimer = setTimeout(() => {
+        doctorSearchQuery = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+        renderDoctorWorklist();
+      }, 200);
+    }
+
+    function setDoctorSeverityFilter(sev) {
+      doctorSeverityFilter = sev;
+      ['chipDoctorAll', 'chipDoctorCritical', 'chipDoctorModerate', 'chipDoctorLow'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+      });
+      if (sev === 'All Severity') document.getElementById('chipDoctorAll')?.classList.add('active');
+      else if (sev === 'CRITICAL') document.getElementById('chipDoctorCritical')?.classList.add('active');
+      else if (sev === 'MODERATE') document.getElementById('chipDoctorModerate')?.classList.add('active');
+      else if (sev === 'LOW') document.getElementById('chipDoctorLow')?.classList.add('active');
+      renderDoctorWorklist();
+    }
+
+    function filterDoctorBySeverity(sev) {
+      setDoctorSeverityFilter(sev);
+    }
+
+    function resetDoctorFilters() {
+      doctorSeverityFilter = 'All Severity';
+      doctorSearchQuery = '';
+      const sInput = document.getElementById('searchInput');
+      if (sInput) sInput.value = '';
+      const wFilter = document.getElementById('wardFilter');
+      if (wFilter) wFilter.value = 'All Wards';
+      const sSelect = document.getElementById('sortSelect');
+      if (sSelect) sSelect.value = 'severity';
+      setDoctorSeverityFilter('All Severity');
+    }
+
+    // Toggle Expand-in-place for AI Recommendations
+    function toggleRecExpand(pid) {
+      if (expandedRecs.has(pid)) {
+        expandedRecs.delete(pid);
+      } else {
+        expandedRecs.add(pid);
+      }
+      renderDoctorWorklist();
+    }
+
+    // Doctor Views Rendering
+    function renderDoctorDashboardViews() {
+      renderDoctorWorklist();
+      renderDoctorCriticalList();
+      renderAlertsFeed();
+      renderMonitoringTable();
+      renderAIInsights();
+    }
+
+    // Render Worklist (Severity-sorted)
+    function renderDoctorWorklist() {
+      const tbody = document.getElementById('patientTableBody');
+      const countEl = document.getElementById('patientTableCount');
+      const statusText = document.getElementById('doctorFilterStatus');
+      if (!tbody) return;
+
+      const wardVal = document.getElementById('wardFilter')?.value || 'All Wards';
+      const sortVal = document.getElementById('sortSelect')?.value || 'severity';
+
+      let filtered = (allPatients || []).filter(p => {
+        // Specialty match
+        const pSpec = (p.assigned_specialty || p.specialty || '').toUpperCase();
+        if (DOCTOR_SPECIALTY && pSpec && pSpec !== DOCTOR_SPECIALTY.toUpperCase()) return false;
+
+        // Severity filter
+        if (doctorSeverityFilter !== 'All Severity' && p.severity !== doctorSeverityFilter) return false;
+
+        // Ward filter
+        if (wardVal !== 'All Wards' && p.ward !== wardVal) return false;
+
+        // Search match
+        if (doctorSearchQuery) {
+          const matchId = (p.patient_id || '').toLowerCase().includes(doctorSearchQuery);
+          const matchName = (p.name || '').toLowerCase().includes(doctorSearchQuery);
+          if (!matchId && !matchName) return false;
+        }
+
+        return true;
+      });
+
+      // Sorting
+      filtered.sort((a, b) => {
+        if (sortVal === 'severity') {
+          const sevRank = { 'CRITICAL': 0, 'MODERATE': 1, 'LOW': 2 };
+          const rA = sevRank[a.severity] !== undefined ? sevRank[a.severity] : 9;
+          const rB = sevRank[b.severity] !== undefined ? sevRank[b.severity] : 9;
+          if (rA !== rB) return rA - rB;
+          return (b.patient_id || '').localeCompare(a.patient_id || '');
+        } else if (sortVal === 'name') {
+          return (a.name || '').localeCompare(b.name || '');
+        } else if (sortVal === 'id') {
+          return (a.patient_id || '').localeCompare(b.patient_id || '');
+        } else if (sortVal === 'room') {
+          return (a.room_no || '').localeCompare(b.room_no || '');
+        } else if (sortVal === 'updated') {
+          return (b.last_update || '').localeCompare(a.last_update || '');
+        }
+        return 0;
+      });
+
+      if (countEl) countEl.textContent = `${filtered.length} of ${allPatients.length}`;
+      if (statusText) {
+        statusText.textContent = doctorSeverityFilter !== 'All Severity'
+          ? `Filtered by ${doctorSeverityFilter}`
+          : 'Showing all authorized patients';
+      }
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
+              <div class="empty-state">
+                <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <div class="empty-state-title">No Patients Found</div>
+                <div class="empty-state-sub">No patients matched the active search or severity filter.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      // Render Rows
+      tbody.innerHTML = filtered.map(p => {
+        const isCritical = p.severity === 'CRITICAL';
+        const isModerate = p.severity === 'MODERATE';
+        const rowClass = isCritical ? 'patient-row row-critical' : (isModerate ? 'patient-row row-moderate' : 'patient-row row-low');
+
+        // Check if unacknowledged
+        const matchedAlert = activeAlertsList.find(a => String(a.patient_id) === String(p.patient_id).replace(/^P/, ''));
+        const isUnacked = isCritical && matchedAlert && !matchedAlert.acknowledged;
+        const pulseClass = isUnacked ? 'row-pulse' : '';
+
+        // Severity Badge
+        let sevBadge = `<span class="badge-severity LOW font-mono"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> LOW</span>`;
+        if (isCritical) {
+          sevBadge = `<span class="badge-severity CRITICAL font-mono"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> CRITICAL</span>`;
+        } else if (isModerate) {
+          sevBadge = `<span class="badge-severity MODERATE font-mono"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> MODERATE</span>`;
+        }
+
+        // Compact Vitals Strip
+        const hrAbnormal = p.heart_rate > 120 || p.heart_rate < 50;
+        const spo2Abnormal = p.spo2 < 90;
+        const tempAbnormal = p.temperature > 38.5;
+        const vitalsStripHtml = `
+          <div class="vitals-strip font-mono">
+            <span class="vital-item ${hrAbnormal ? 'abnormal-high' : ''}">HR: <strong>${p.heart_rate}</strong><span class="unit">bpm</span></span>
+            <span class="vital-sep">•</span>
+            <span class="vital-item ${spo2Abnormal ? 'abnormal-low' : ''}">SpO₂: <strong>${p.spo2}</strong><span class="unit">%</span></span>
+            <span class="vital-sep">•</span>
+            <span class="vital-item ${tempAbnormal ? 'abnormal-high' : ''}">T: <strong>${p.temperature}</strong><span class="unit">°C</span></span>
+            <span class="vital-sep">•</span>
+            <span class="vital-item">BP: <strong>${p.systolic_bp}/${p.diastolic_bp}</strong></span>
+          </div>
+        `;
+
+        // Expand-in-place AI Recommendation
+        const isExpanded = expandedRecs.has(p.patient_id);
+        const recText = p.recommendation || 'Continuous physiological monitoring and clinical review.';
+        const recHtml = `
+          <div class="worklist-rec-container">
+            <div class="worklist-rec-box ${isExpanded ? 'expanded' : ''}" id="recBox_${p.patient_id}">
+              ${escapeHtml(recText)}
+            </div>
+            <button type="button" class="btn-rec-toggle" onclick="toggleRecExpand('${p.patient_id}'); event.stopPropagation();">
+              ${isExpanded ? 'Show less' : 'Expand'}
+            </button>
+          </div>
+        `;
+
+        const ageGender = `${p.age || 45}y • ${(p.gender || 'M').charAt(0).toUpperCase()}`;
+
+        return `
+          <tr class="${rowClass} ${pulseClass}" onclick="openPatientDrawer('${p.patient_id}')" style="cursor:pointer;">
+            <td style="font-weight: 700; color: var(--text);">${escapeHtml(p.name)}</td>
+            <td class="font-mono" style="font-weight: 700; color: var(--accent);">${p.patient_id}</td>
+            <td style="font-size: 11px; color: var(--text-muted);">${ageGender}</td>
+            <td class="font-mono" style="font-size: 11px;">${p.ward} R:${p.room_no} B:${p.bed_no}</td>
+            <td>${sevBadge}</td>
+            <td>${vitalsStripHtml}</td>
+            <td class="font-mono" style="font-size: 10px; color: var(--text-faint);" title="${p.last_update || 'Just now'}">${p.last_update || 'Live'}</td>
+            <td>${recHtml}</td>
+            <td style="text-align: center;" onclick="event.stopPropagation();">
+              <button type="button" class="btn-db" style="padding: 3px 8px; font-size: 10px;" onclick="openPatientDrawer('${p.patient_id}')">Open</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Render Critical Tab
+    function renderDoctorCriticalList() {
+      const container = document.getElementById('criticalPatientsList');
+      const headerCount = document.getElementById('criticalHeaderCount');
+      const navBadge = document.getElementById('navCriticalBadge');
+      const pushBadge = document.getElementById('pushBadgeCount');
+      if (!container) return;
+
+      const criticals = (allPatients || []).filter(p => {
+        if (p.severity !== 'CRITICAL') return false;
+        const pSpec = (p.assigned_specialty || p.specialty || '').toUpperCase();
+        return !DOCTOR_SPECIALTY || !pSpec || pSpec === DOCTOR_SPECIALTY.toUpperCase();
+      });
+
+      if (headerCount) headerCount.textContent = criticals.length;
+      if (navBadge) navBadge.textContent = criticals.length;
+      if (pushBadge) pushBadge.textContent = criticals.length;
+
+      if (criticals.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding: 48px 16px;">
+            <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="var(--low)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <div class="empty-state-title" style="color:var(--low);">No Critical Patients in ${DOCTOR_SPECIALTY}</div>
+            <div class="empty-state-sub">All assigned patients are physiologically stable.</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="medintel-table">
+          <thead>
+            <tr>
+              <th>Patient Name</th>
+              <th>ID</th>
+              <th>Location</th>
+              <th>Primary Condition</th>
+              <th>Vitals</th>
+              <th>AI Recommendation</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${criticals.map(p => `
+              <tr class="patient-row row-critical" onclick="openPatientDrawer('${p.patient_id}')" style="cursor:pointer;">
+                <td style="font-weight:700; color:var(--text);">${escapeHtml(p.name)}</td>
+                <td class="font-mono" style="font-weight:700; color:var(--accent);">${p.patient_id}</td>
+                <td>${p.ward} R:${p.room_no} B:${p.bed_no}</td>
+                <td style="color:var(--critical); font-weight:600;">${p.reasons ? p.reasons.join(', ') : 'Hypoxia'}</td>
+                <td class="font-mono">SpO₂: ${p.spo2}% • HR: ${p.heart_rate} • T: ${p.temperature}°C</td>
+                <td style="font-size:11px; color:var(--text-muted);">${escapeHtml(p.recommendation || 'Urgent intervention')}</td>
+                <td><button type="button" class="btn-db" onclick="openPatientDrawer('${p.patient_id}')" style="padding:3px 8px; font-size:10px;">Review</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // Render Active Alerts Table
+    async function renderAlertsFeed() {
+      const tbody = document.getElementById('alertsFeedTableBody');
+      const badge = document.getElementById('alertsFeedCountBadge');
+      if (!tbody) return;
+
+      try {
+        const res = await fetch(`/api/v1/alerts/active?doctor_id=${encodeURIComponent(DOCTOR_ID)}&specialty=${encodeURIComponent(DOCTOR_SPECIALTY)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const alerts = data.alerts || [];
+
+        if (badge) badge.textContent = `${alerts.length} ACTIVE`;
+
+        if (alerts.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--low);">No active critical alerts logged for ${DOCTOR_SPECIALTY}.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = alerts.map(a => {
+          const alertId = a.alert_id || '--';
+          const pid = a.patient_id ? (String(a.patient_id).startsWith('P') ? a.patient_id : 'P' + a.patient_id) : '--';
+          const timeStr = a.created_at ? new Date(a.created_at).toLocaleTimeString() : 'Just now';
+          return `
+            <tr>
+              <td class="font-mono" style="font-weight:700; color:var(--accent);">${alertId}</td>
+              <td style="font-weight:700; color:var(--text);">${pid}</td>
+              <td>${a.ward || 'ICU'} (R:${a.room_no || '201'} B:${a.bed_no || '1'})</td>
+              <td style="color:var(--critical); font-weight:600;">${a.reason || 'Abnormal Telemetry'}</td>
+              <td><span class="badge-severity CRITICAL font-mono">${a.severity || 'CRITICAL'}</span></td>
+              <td>${a.assigned_doctor || DOCTOR_NAME}</td>
+              <td class="font-mono" style="font-size:10px;">${timeStr}</td>
+              <td>
+                <button type="button" class="btn-db" style="padding:2px 6px; font-size:10px;" onclick="openPatientDrawer('${pid}')">Telemetry</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.warn('Error fetching alerts feed:', err);
+      }
+    }
+
+    // Render Full Monitoring Stream Table
+    function renderMonitoringTable() {
+      const tbody = document.getElementById('monitoringTableBody');
+      if (!tbody) return;
+
+      const doctorPatients = (allPatients || []).filter(p => {
+        const pSpec = (p.assigned_specialty || p.specialty || '').toUpperCase();
+        return !DOCTOR_SPECIALTY || !pSpec || pSpec === DOCTOR_SPECIALTY.toUpperCase();
+      });
+
+      if (!doctorPatients || doctorPatients.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 20px; color: var(--text-muted);">No patients monitored in this scope.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = doctorPatients.map(p => {
+        const sevClass = p.severity === 'CRITICAL' ? 'CRITICAL' : (p.severity === 'MODERATE' ? 'MODERATE' : 'LOW');
+        return `
+          <tr onclick="openPatientDrawer('${p.patient_id}')" style="cursor:pointer;">
+            <td class="font-mono" style="font-weight:700; color:var(--text);">${p.patient_id}</td>
+            <td style="font-weight:600;">${escapeHtml(p.name)}</td>
+            <td style="font-size:11px;">${p.ward} R:${p.room_no} B:${p.bed_no}</td>
+            <td class="font-mono" style="font-weight:700; ${p.heart_rate > 120 || p.heart_rate < 50 ? 'color:var(--critical);' : ''}">${p.heart_rate} bpm</td>
+            <td class="font-mono" style="font-weight:700; ${p.spo2 < 90 ? 'color:var(--critical);' : ''}">${p.spo2}%</td>
+            <td class="font-mono" style="font-weight:700; ${p.temperature > 38.5 ? 'color:var(--critical);' : ''}">${p.temperature} °C</td>
+            <td class="font-mono">${p.systolic_bp}/${p.diastolic_bp}</td>
+            <td class="font-mono">${p.respiratory_rate}</td>
+            <td><span class="badge-severity ${sevClass} font-mono">${p.severity}</span></td>
+            <td><span class="badge-trend ${p.trend}">${p.trend}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Render AI Clinical Insights Cards
+    function renderAIInsights() {
+      const container = document.getElementById('aiInsightsContainer');
+      if (!container) return;
+
+      const criticals = (allPatients || []).filter(p => p.severity === 'CRITICAL');
+      if (criticals.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: var(--low);">
+            No active alerts requiring clinical escalation. All patient vitals within baseline.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = criticals.map(p => {
+        const reasonsList = (p.reasons && p.reasons.length > 0) ? p.reasons : ['Critical physiological anomaly detected'];
+        return `
+          <div class="panel" style="background:var(--surface-2); padding:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 6px;">
+              <div>
+                <span class="badge-severity CRITICAL font-mono" style="font-size:9.5px; padding:2px 6px;">CLINICAL INDICATION</span>
+                <div style="font-weight:800; font-size:13px; color:var(--text); margin-top:4px;">${escapeHtml(p.name)} (${p.patient_id})</div>
+                <div style="font-size:10px; color:var(--text-muted);">${p.ward} • Room ${p.room_no} • Bed ${p.bed_no}</div>
+              </div>
+              <span class="badge-trend ${p.trend}">${p.trend} TREND</span>
+            </div>
+
+            <div style="margin-top: 8px;">
+              <span style="font-size: 9.5px; text-transform: uppercase; color: var(--text-faint); font-weight: 700;">Clinical Findings</span>
+              <ul style="margin: 4px 0 8px 16px; font-size: 11px; color: var(--moderate);">
+                ${reasonsList.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
+              </ul>
+            </div>
+
+            <div style="background: var(--surface); border-left: 3px solid var(--accent); padding: 8px 10px; border-radius: 4px; font-size: 11px; color: var(--text);">
+              <strong>Recommendation:</strong> ${escapeHtml(p.recommendation || 'Initiate oxygen support and bedside assessment.')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Fetch Doctor Registered Devices
+    async function fetchDoctorDevices() {
+      const container = document.getElementById('doctorDevicesList');
+      if (!container) return;
+      try {
+        const res = await fetch(`/api/v1/auth/devices?doctor_id=${DOCTOR_ID}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const devs = data.devices || [];
+
+        if (devs.length === 0) {
+          container.innerHTML = `
+            <div style="padding: 12px; background: var(--surface-2); border-radius: 6px; color: var(--text-muted);">
+              No mobile devices registered yet for ${DOCTOR_NAME} (${DOCTOR_ID}). Launch the MedIntel Android app to register device FCM token.
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = devs.map(d => `
+          <div style="padding: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color:var(--text);">${d.device_id || 'Android Device'}</strong>
+              <div class="font-mono" style="font-size: 9.5px; color: var(--text-muted);">${(d.fcm_token || '').substring(0, 36)}...</div>
+            </div>
+            <span style="color: var(--low); font-weight: 700; font-size: 10px;">ACTIVE</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.warn('Devices fetch note:', e);
+      }
+    }
+
+    // Drawer Helpers
+    function openPatientDrawer(pid) {
+      const p = (allPatients || []).find(x => String(x.patient_id) === String(pid) || String(x.patient_id) === 'P' + pid);
+      if (!p) return;
+
+      setText('drawerPid', p.patient_id);
+      setText('drawerName', p.name);
+      setText('drawerDemographics', `${p.age || 45} yrs • ${p.gender || 'Patient'} • Ward: ${p.ward}`);
+      setText('drawerWardRoom', `${p.ward} • Room ${p.room_no} • Bed ${p.bed_no}`);
+      setText('drawerSeverityBadge', p.severity);
+      setText('drawerHr', `${p.heart_rate} bpm`);
+      setText('drawerSpo2', `${p.spo2}%`);
+      setText('drawerTemp', `${p.temperature} °C`);
+      setText('drawerBp', `${p.systolic_bp}/${p.diastolic_bp} mmHg`);
+      setText('drawerRr', `${p.respiratory_rate} /min`);
+      setText('drawerDoctor', p.assigned_doctor_name || p.assigned_doctor || DOCTOR_NAME);
+      setText('drawerSpecialty', p.assigned_doctor_specialty || p.assigned_specialty || p.specialty || DOCTOR_SPECIALTY);
+      setText('drawerReason', p.reasons ? p.reasons.join(', ') : 'Abnormal Telemetry');
+      setText('drawerRec', p.recommendation || 'Continuous monitoring.');
+
+      const drawer = document.getElementById('patientDrawer');
+      if (drawer) drawer.style.display = 'block';
+    }
+
+    function closePatientDrawer() {
+      const drawer = document.getElementById('patientDrawer');
+      if (drawer) drawer.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

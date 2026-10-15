@@ -1,68 +1,67 @@
-# ==========================
 # Python
-# ==========================
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-
-# ==========================
-# Virtual Environment
-# ==========================
+*$py.class
 .venv/
-venv/
 env/
+venv/
+*.env
+.env.txt
 
-# ==========================
-# Environment Variables
-# ==========================
-.env
-
-# ==========================
-# Jupyter Notebook
-# ==========================
-.ipynb_checkpoints/
-
-# ==========================
-# VS Code
-# ==========================
-.vscode/
-
-# ==========================
-# Python Build Files
-# ==========================
-build/
-dist/
-*.egg-info/
-
-# ==========================
-# Logs
-# ==========================
-logs/
-*.log
-
-# ==========================
-# Database Files
-# ==========================
+# Database WAL and DB files
 *.duckdb
-*.db
-*.sqlite
-*.sqlite3
+*.duckdb.wal
+*.duckdb.tmp
+database/*.duckdb
 
-# ==========================
-# Airflow
-# ==========================
-airflow/logs/
-airflow/airflow.db
+# Data & Models
+data/
+human_vital_signs_dataset_2024.csv
+ml_models/
 
-# ==========================
-# OS Files
-# ==========================
+# Secrets
+secrets/*.json
+!secrets/firebase_service_account.json.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
 .DS_Store
 Thumbs.db
 
-# ==========================
-# Temporary Files
-# ==========================
-*.tmp
-*.temp
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Firebase service account credentials
+secrets/
+*firebase-adminsdk*.json
+
+# Local DuckDB database and backups
+database/*.duckdb
+database/*.duckdb.*
+database/*.bak
+
+# Generated alert audio
+static/audio/alerts/*.wav
+
+# Android build outputs and Gradle caches
+android/.gradle/
+android/**/build/
+android/build/
+android/.kotlin/
+*.apk
+*.aab
+
+# Android local configuration
+android/local.properties
+
+# Firebase Android configuration
+# Review google-services.json before deciding whether to commit it
+
+# Keep Firebase Android configuration out of Git for now
+android/app/google-services.json

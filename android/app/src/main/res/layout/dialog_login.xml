@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/surface_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="22dp">
+
+        <!-- Professional Branding Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="@color/surface_variant"
+                android:gravity="center"
+                android:text="M"
+                android:textColor="@color/accent_blue"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MEDINTEL"
+                    android:textColor="@color/text_light"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Clinical Patient Monitoring Platform"
+                    android:textColor="@color/text_muted"
+                    android:textSize="11.5sp" />
+            </LinearLayout>
+
+            <!-- Small Unobtrusive Connection Dot -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/surface_variant"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp">
+
+                <View
+                    android:id="@+id/viewServerDot"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:background="@color/low_green" />
+
+                <TextView
+                    android:id="@+id/tvServerStatusPill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Online"
+                    android:textColor="@color/low_green"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="5dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/border_neutral"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Role / Doctor Selection Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SELECT CLINICAL IDENTITY"
+            android:textColor="@color/text_faint"
+            android:textSize="10.5sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Doctor Identity Options Grid (Real Existing Registry) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="14dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="6dp">
+
+                <Button
+                    android:id="@+id/chipDoc1"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:text="DOC001 • Cardiology\nDr. Viraj Patil"
+                    android:textColor="@color/text_light"
+                    android:textSize="10sp"
+                    android:textAllCaps="false"
+                    android:padding="2dp"
+                    android:backgroundTint="@color/surface_variant" />
+
+                <Button
+                    android:id="@+id/chipDoc2"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:text="DOC002 • Pulmonology\nDr. Smarath Pawar"
+                    android:textColor="@color/text_light"
+                    android:textSize="10sp"
+                    android:textAllCaps="false"
+                    android:padding="2dp"
+                    android:backgroundTint="@color/surface_variant" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/chipDoc3"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:text="DOC003 • General Med\nDr. Shreya Sutar"
+                    android:textColor="@color/text_light"
+                    android:textSize="10sp"
+                    android:textAllCaps="false"
+                    android:padding="2dp"
+                    android:backgroundTint="@color/surface_variant" />
+
+                <Button
+                    android:id="@+id/chipRec1"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:text="REC001 • Reception\nAdmissions Desk"
+                    android:textColor="@color/text_light"
+                    android:textSize="10sp"
+                    android:textAllCaps="false"
+                    android:padding="2dp"
+                    android:backgroundTint="@color/surface_variant" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Doctor Access ID / Email Input -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CLINICAL ACCOUNT ID"
+            android:textColor="@color/text_faint"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/etDoctorId"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:background="@color/surface_variant"
+            android:textColor="@color/text_light"
+            android:textColorHint="@color/text_faint"
+            android:textSize="13sp"
+            android:fontFamily="monospace"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:hint="e.g. DOC001, DOC002, DOC003, REC001"
+            android:singleLine="true" />
+
+        <!-- Password / Clinical PIN Section with Show/Hide Toggle -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CLINICAL PIN / PASSWORD"
+            android:textColor="@color/text_faint"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:orientation="horizontal"
+            android:background="@color/surface_variant"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/etPassword"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:textColor="@color/text_light"
+                android:textColorHint="@color/text_faint"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:hint="Enter Clinical PIN"
+                android:inputType="textPassword"
+                android:singleLine="true" />
+
+            <Button
+                android:id="@+id/btnTogglePassword"
+                android:layout_width="64dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="6dp"
+                android:text="SHOW"
+                android:textColor="@color/accent_blue"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:padding="0dp"
+                android:backgroundTint="@color/border_neutral" />
+        </LinearLayout>
+
+        <!-- Inline Error Display -->
+        <TextView
+            android:id="@+id/tvLoginError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/critical_red"
+            android:textSize="11.5sp"
+            android:visibility="gone"
+            android:layout_marginTop="8dp" />
+
+        <!-- Primary Sign In Button -->
+        <Button
+            android:id="@+id/btnLoginSubmit"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Sign In"
+            android:textColor="@color/text_light"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:backgroundTint="@color/accent_blue"
+            android:layout_marginTop="16dp" />
+
+        <!-- Progress Spinner -->
+        <ProgressBar
+            android:id="@+id/pbLoginProgress"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center_horizontal"
+            android:indeterminateTint="@color/accent_blue"
+            android:visibility="gone"
+            android:layout_marginTop="10dp" />
+
+        <!-- Secondary Server Settings Header / Toggle -->
+        <LinearLayout
+            android:id="@+id/llServerSettingsHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginTop="18dp"
+            android:paddingTop="6dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Network / Server Settings"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tvServerSettingsToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▼ Configure"
+                android:textColor="@color/accent_blue"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Secondary Expandable Server Config (Collapsed by default in normal flow) -->
+        <LinearLayout
+            android:id="@+id/llServerSettingsContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginTop="8dp"
+            android:background="@color/surface_variant"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="FASTAPI SERVER ENDPOINT"
+                android:textColor="@color/text_faint"
+                android:textSize="9.5sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <EditText
+                    android:id="@+id/etServerUrl"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:background="@color/surface_dark"
+                    android:textColor="@color/text_light"
+                    android:textColorHint="@color/text_faint"
+                    android:textSize="11.5sp"
+                    android:fontFamily="monospace"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:hint="http://127.0.0.1:8000"
+                    android:singleLine="true" />
+
+                <Button
+                    android:id="@+id/btnTestServer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="6dp"
+                    android:text="Test"
+                    android:textColor="@color/text_light"
+                    android:textSize="11sp"
+                    android:backgroundTint="@color/border_neutral" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvServerStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Status: Connected (http://127.0.0.1:8000)"
+                android:textColor="@color/low_green"
+                android:textSize="10.5sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MEDINTEL — Hospital Operations Command Center</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Navbar Header (Stage 1 + Stage 3) -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-icon-svg">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="brand-title">MEDINTEL</span>
+            <span class="badge-scope-hospital">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+              </svg>
+              Hospital-wide
+            </span>
+          </div>
+          <div class="brand-sub">Admissions &amp; Clinical Operations</div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div>
+          <h1>Hospital Operations Command Center</h1>
+          <p>Real-time inpatient census, priority telemetry &amp; clinical coordination</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Freshness Chip (Safe Elapsed Time) -->
+        <div id="dataFreshnessChip" class="status-chip live" title="Real-time vital telemetry freshness">
+          <span class="status-dot" id="liveStatusBadge"></span>
+          <span id="dataFreshnessText" class="font-mono">Live · updated 0s ago</span>
+        </div>
+
+        <!-- Single System Status Chip with Popover Trigger -->
+        <div class="popover-anchor">
+          <button type="button" class="status-chip interactive" id="systemStatusChip" onclick="toggleSystemStatusPopover()" aria-haspopup="true" aria-expanded="false" title="View System Status, Voice Controls &amp; Simulator">
+            <span class="status-dot"></span>
+            <span>System Status</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <!-- System Status Popover Dropdown -->
+          <div class="popover-menu" id="systemStatusPopover">
+            <div class="popover-header">System Health &amp; Services</div>
+
+            <!-- Hospital-Wide Active Status -->
+            <div class="popover-row">
+              <span style="display:flex; align-items:center; gap:6px; font-weight:600;">
+                <span class="status-dot"></span> Hospital-Wide Scope
+              </span>
+              <span style="font-size:10px; font-weight:700; color:var(--low);">ACTIVE</span>
+            </div>
+
+            <!-- Voice Controls & Status -->
+            <div class="popover-row" style="flex-direction:column; align-items:stretch; gap:6px; background:var(--surface-2); padding:8px; border-radius:6px;">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div id="voiceAlertBadge" onclick="toggleVoiceAlerts()" style="cursor:pointer; display:flex; align-items:center; gap:6px;" title="Toggle Hospital Voice Announcements">
+                  <span class="status-dot" id="voiceAlertDot"></span>
+                  <span style="font-weight:600;">Voice Alerts:</span>
+                  <span id="voiceAlertStatus" style="font-weight:700; color:var(--low);">ACTIVE</span>
+                </div>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="btn-db" id="btnTestVoice" onclick="playTestVoice()" style="flex:1; padding:4px 8px; font-size:10px; text-align:center;">Test Voice</button>
+                <button type="button" class="btn-db" id="btnVoiceTest" onclick="playTestVoice()" style="display:none;">Test Voice</button>
+                <button type="button" class="btn-db" id="btnVoiceMute" onclick="toggleVoiceAlerts()" style="flex:1; padding:4px 8px; font-size:10px; text-align:center;">Mute / Unmute</button>
+              </div>
+            </div>
+
+            <!-- Push & FCM Status -->
+            <div class="popover-row">
+              <span style="display:flex; align-items:center; gap:6px; font-weight:600;">
+                <span class="status-dot"></span> Emergency Push (FCM)
+              </span>
+              <div class="push-badge" id="pushSubBadge" style="margin:0; padding:2px 6px;">
+                <span style="color:var(--low); font-weight:700; font-size:9.5px;">READY</span>
+                <button type="button" id="btnTogglePush" style="display:none;"></button>
+              </div>
+            </div>
+
+            <!-- Simulator Engine Status Badge -->
+            <div class="popover-row">
+              <span style="font-weight:600;">Simulator Engine</span>
+              <span class="sim-status-pill stopped" id="simStatusPill">
+                <span class="status-dot red"></span> STOPPED
+              </span>
+            </div>
+
+            <!-- Preserved DB Update Timestamps in DOM -->
+            <div class="popover-row font-mono" style="font-size:10px; color:var(--text-muted); border-top:1px solid var(--border); padding-top:6px;">
+              <span>Authoritative DB Sync:</span>
+              <span id="kpiLastUpdate" style="color:var(--text); font-weight:700;">--:--:--</span>
+              <span id="sidebarLastUpdate" style="display:none;">--:--:--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Admit New Patient Button -->
+        <button type="button" class="btn-header-admit" onclick="openModal('modalAddPatient')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Admit Patient
+        </button>
+
+        <!-- Theme Toggle Button -->
+        <button type="button" class="btn-icon-toggle" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle light/dark theme" title="Switch Light / Dark Theme">
+          <svg id="themeIconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg id="themeIconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+
+        <!-- Live Clock -->
+        <div class="header-clock font-mono">
+          <span id="liveClock">--:--:--</span>
+          <span id="serverClock" style="display:none;">--:--:--</span>
+          <span id="streamCycleCount" style="display:none;">0</span>
+          <audio id="alertSoundAudio" preload="auto" style="display:none;"></audio>
+        </div>
+
+        <!-- Reception Desk Profile -->
+        <div class="user-profile" onclick="switchRecTab('profile')" title="View Receptionist Profile">
+          <div class="user-avatar">RD</div>
+          <div>
+            <div style="font-weight:700; color:var(--text); font-size:11px;">Reception Desk</div>
+            <div style="font-size:9.5px; color:var(--text-muted);">REC001 • Central Desk</div>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <a href="{{ url_for('logout') }}" class="btn-logout" title="Sign Out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Shell -->
+    <div class="main-layout">
+      <!-- Left Persistent Sidebar Navigation (Navigation Only) -->
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="section-label">HOSPITAL OPERATIONS</div>
+          <nav class="nav-menu">
+            <a class="nav-item active" id="navOverview" onclick="switchRecTab('overview')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+              </span>
+              <span>Overview</span>
+            </a>
+
+            <a class="nav-item" id="navAllPatients" onclick="switchRecTab('allPatients')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </span>
+              <span>All Patients</span>
+              <span class="nav-badge accent font-mono" id="navTotalPatientsBadge">0</span>
+            </a>
+
+            <a class="nav-item" id="navCriticalAlerts" onclick="switchRecTab('criticalAlerts')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </span>
+              <span>Critical Alerts</span>
+              <span class="nav-badge danger font-mono" id="navCriticalAlertsBadge">0</span>
+            </a>
+
+            <a class="nav-item" id="navVoiceAlerts" onclick="switchRecTab('voiceAlerts')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              </span>
+              <span>Voice Alerts</span>
+              <span class="nav-badge font-mono" id="navVoiceQueueBadge">0</span>
+            </a>
+
+            <a class="nav-item" id="navPatientManagement" onclick="switchRecTab('patientManagement')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </span>
+              <span>Patient Management</span>
+            </a>
+
+            <a class="nav-item" id="navDoctorStatus" onclick="switchRecTab('doctorStatus')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path><circle cx="20" cy="10" r="2"></circle></svg>
+              </span>
+              <span>Doctor Status</span>
+            </a>
+
+            <a class="nav-item" id="navNotifications" onclick="switchRecTab('notifications')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              </span>
+              <span>Notifications</span>
+            </a>
+
+            <a class="nav-item" id="navSystemStatus" onclick="switchRecTab('systemStatus')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              </span>
+              <span>System Status</span>
+            </a>
+          </nav>
+        </div>
+
+        <div class="sidebar-footer">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="user-avatar" style="width: 28px; height: 28px; font-size: 10px;">RD</div>
+            <div>
+              <div style="font-weight: 700; color: var(--text); font-size: 11px;">Reception Desk</div>
+              <div style="font-size: 9.5px; color: var(--text-muted);">Hospital Admissions</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Operational Viewport -->
+      <main class="content-area">
+        <!-- Live Real-Time Hospital Voice Queue Bar (Visible when Speaking or Queued) -->
+        <div class="voice-queue-bar idle-collapsed" id="recVoiceQueueBar">
+          <div class="voice-queue-left">
+            <div class="voice-status-indicator">
+              <span>HOSPITAL VOICE:</span>
+              <span id="recVoiceBarStatus" class="voice-status-active">ACTIVE</span>
+            </div>
+
+            <!-- Speaking State -->
+            <div id="recVoiceSpeakingBox" class="voice-speaking-box idle">
+              <span id="recVoiceSpeakingDot" class="status-dot"></span>
+              <span id="recVoiceSpeakingLabel" style="font-weight: 700; color: var(--text-muted);">Idle — Monitoring Hospital Admissions</span>
+            </div>
+
+            <!-- Queue List / Pending -->
+            <div class="voice-queue-tags">
+              <span style="font-size: 10px; color: var(--text-faint); text-transform: uppercase;">Queued:</span>
+              <div id="recVoiceQueueTagsContainer" style="display: flex; align-items: center; gap: 4px;">
+                <span class="voice-tag" style="background: var(--surface); border-color: var(--border); color: var(--text-muted);">None</span>
+              </div>
+            </div>
+
+            <!-- Last Spoken -->
+            <div style="display: flex; align-items: center; gap: 4px; font-size: 10.5px;">
+              <span style="color: var(--text-faint);">Last Spoken:</span>
+              <span id="recVoiceLastSpokenTag" class="voice-tag last-spoken">None</span>
+            </div>
+          </div>
+
+          <div class="voice-controls-right">
+            <button type="button" class="btn-db" id="btnUnlockRecVoiceBar" onclick="unlockAudioContextManual()" style="font-size: 10px; padding: 3px 8px; color: var(--accent); display:inline-flex; align-items:center; gap:5px;" title="Grant browser audio autoplay permission">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              <span>Hospital Audio Active</span>
+            </button>
+            <button type="button" class="btn-db" onclick="toggleVoiceAlerts()" style="font-size: 10px; padding: 3px 8px;">
+              Mute / Unmute
+            </button>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 1: OVERVIEW & HOSPITAL COMMAND CENTER (STAGE 3)
+             ============================================================ -->
+        <div id="recSectionOverview" class="dashboard-section">
+          <!-- KPI Row: 5 Cards (Clickable Severity Filters) -->
+          <div class="kpi-row">
+            <!-- 1. Total Active Patients -->
+            <div class="kpi-card" id="kpiCardTotal" onclick="filterBySeverityCard('ALL')" title="Click to show all patients">
+              <div class="kpi-icon-wrap blue">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </div>
+              <div class="kpi-content">
+                <div class="kpi-label">TOTAL ACTIVE PATIENTS</div>
+                <div class="kpi-val" id="kpiTotalPatients">0</div>
+                <div class="kpi-sub">Admitted Population</div>
+              </div>
+            </div>
+
+            <!-- 2. Critical Patients -->
+            <div class="kpi-card" id="kpiCardCritical" onclick="filterBySeverityCard('CRITICAL')" title="Click to filter by Critical patients">
+              <div class="kpi-icon-wrap red">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <div class="kpi-content">
+                <div class="kpi-label">PATIENTS IN CRITICAL STATE</div>
+                <div class="kpi-val critical-val" id="kpiCriticalCount">0</div>
+                <div class="kpi-sub" style="color:var(--critical);">Immediate Interventions</div>
+              </div>
+            </div>
+
+            <!-- 3. Moderate Patients -->
+            <div class="kpi-card" id="kpiCardModerate" onclick="filterBySeverityCard('MODERATE')" title="Click to filter by Moderate patients">
+              <div class="kpi-icon-wrap orange">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              </div>
+              <div class="kpi-content">
+                <div class="kpi-label">MODERATE PATIENTS</div>
+                <div class="kpi-val moderate-val" id="kpiModerateCount">0</div>
+                <div class="kpi-sub">Clinical Watch</div>
+              </div>
+            </div>
+
+            <!-- 4. Low Risk Patients -->
+            <div class="kpi-card" id="kpiCardLow" onclick="filterBySeverityCard('LOW')" title="Click to filter by Low Risk patients">
+              <div class="kpi-icon-wrap green">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              </div>
+              <div class="kpi-content">
+                <div class="kpi-label">LOW RISK PATIENTS</div>
+                <div class="kpi-val low-val" id="kpiLowCount">0</div>
+                <div class="kpi-sub">Physiologically Stable</div>
+              </div>
+            </div>
+
+            <!-- 5. Doctors On Duty (Navigates to Doctor Status) -->
+            <div class="kpi-card" onclick="switchRecTab('doctorStatus')" title="Click to view Active Doctor Roster">
+              <div class="kpi-icon-wrap purple">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path><circle cx="20" cy="10" r="2"></circle></svg>
+              </div>
+              <div class="kpi-content">
+                <div class="kpi-label">DOCTORS ON DUTY</div>
+                <div class="kpi-val doctor-val" id="kpiDoctorsOnDuty">3 Active</div>
+                <div class="kpi-sub">Cardio • Pulm • General</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Two-Panel Command Center Layout (CSS Grid, Independent Scrolling) -->
+          <div class="receptionist-command-grid">
+            <!-- ==========================================
+                 LEFT PANEL: ALL ACTIVE PATIENTS (~2fr)
+                 ========================================== -->
+            <section class="panel panel-patients-left" aria-labelledby="allPatientsHeading">
+              <!-- Sticky Header & Filter Toolbar -->
+              <div class="panel-header-sticky">
+                <div class="panel-title-bar">
+                  <h2 class="panel-title" id="allPatientsHeading">
+                    <span>All Active Patients</span>
+                    <span class="count-pill font-mono" id="patientTableCount">0</span>
+                  </h2>
+                  <span class="toolbar-status-text" id="patientFilterStatus">Showing all admitted patients</span>
+                </div>
+
+                <!-- Comprehensive Toolbar -->
+                <div class="toolbar">
+                  <!-- Search input with icon -->
+                  <div class="search-input-wrap">
+                    <svg class="search-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="searchInput" class="search-input font-mono" placeholder="Search by name or ID..." oninput="onSearchInputDebounced()">
+                  </div>
+
+                  <!-- Severity Filter Chips -->
+                  <div class="severity-chips-group">
+                    <button type="button" class="severity-chip-btn active" id="chipSevAll" onclick="setSeverityFilter('All Severity')">All</button>
+                    <button type="button" class="severity-chip-btn" id="chipSevCritical" onclick="setSeverityFilter('CRITICAL')">Critical</button>
+                    <button type="button" class="severity-chip-btn" id="chipSevModerate" onclick="setSeverityFilter('MODERATE')">Moderate</button>
+                    <button type="button" class="severity-chip-btn" id="chipSevLow" onclick="setSeverityFilter('LOW')">Low Risk</button>
+                  </div>
+
+                  <!-- Preserved Hidden Select for Severity Logic Compatibility -->
+                  <select id="severityFilter" style="display:none;" onchange="renderPatientTable()">
+                    <option value="All Severity">All Severity</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                    <option value="MODERATE">MODERATE</option>
+                    <option value="LOW">LOW</option>
+                  </select>
+
+                  <!-- Ward Filter Select -->
+                  <select id="wardFilter" class="filter-select" onchange="renderPatientTable()">
+                    <option value="All Wards">All Wards</option>
+                    <option value="ICU">ICU</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Pulmonology">Pulmonology</option>
+                    <option value="General Medicine">General Medicine</option>
+                  </select>
+
+                  <!-- Sort Select -->
+                  <select id="sortSelect" class="filter-select" onchange="renderPatientTable()">
+                    <option value="severity">Sort: Severity</option>
+                    <option value="name">Sort: Name</option>
+                    <option value="id">Sort: Patient ID</option>
+                    <option value="ward">Sort: Ward / Room</option>
+                    <option value="updated">Sort: Last Update</option>
+                  </select>
+
+                  <!-- Clear Filters -->
+                  <button type="button" class="btn-clear-filters" id="btnClearFilters" onclick="resetAllFilters()">Clear</button>
+                </div>
+              </div>
+
+              <!-- Scrollable Table Body (Keyed Diff/Patch) -->
+              <div class="panel-scroll-body" id="patientTableScrollContainer">
+                <table class="medintel-table" id="allPatientsTable">
+                  <thead>
+                    <tr>
+                      <th style="width: 140px;">Patient Name</th>
+                      <th style="width: 85px;">ID</th>
+                      <th style="width: 120px;">Specialty / Ward</th>
+                      <th style="width: 85px;">Room / Bed</th>
+                      <th style="width: 130px;">Assigned Doctor</th>
+                      <th style="width: 95px;">Severity</th>
+                      <th style="min-width: 220px;">Vitals Strip</th>
+                      <th style="width: 80px;">Updated</th>
+                      <th style="width: 36px; text-align: center;">⋯</th>
+                    </tr>
+                  </thead>
+                  <tbody id="patientTableBody">
+                    <!-- Keyed Diff/Patch Rows Injected by main.js -->
+                    <tr>
+                      <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        <div class="skeleton-line" style="width: 60%; margin: 8px auto;"></div>
+                        <div class="skeleton-line" style="width: 40%; margin: 8px auto;"></div>
+                        Loading complete hospital census...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Preserved Hidden Pagination Controls (Contract Requirement) -->
+              <div style="display:none;" aria-hidden="true">
+                <span id="patientTablePaginationInfo">Showing all patients</span>
+                <span id="patientTablePageIndicator">Page 1 of 1</span>
+                <button type="button" id="btnPrevPatientPage" onclick="prevPatientPage()">‹ Prev</button>
+                <button type="button" id="btnNextPatientPage" onclick="nextPatientPage()">Next ›</button>
+                <select id="patientTablePageSizeSelect" onchange="changePatientPageSize(this.value)">
+                  <option value="All" selected>All</option>
+                </select>
+              </div>
+            </section>
+
+            <!-- ==========================================
+                 RIGHT PANEL: CRITICAL PATIENTS (~1fr)
+                 ========================================== -->
+            <section class="panel panel-critical-right" aria-labelledby="criticalPatientsHeading">
+              <!-- Sticky Header -->
+              <div class="panel-header-sticky">
+                <div class="panel-title-bar">
+                  <h2 class="panel-title" id="criticalPatientsHeading">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>Critical Patients</span>
+                    <span class="count-pill critical font-mono" id="criticalHeaderCount">0</span>
+                  </h2>
+                  <button type="button" class="btn-clear-filters" onclick="switchRecTab('criticalAlerts')" style="color:var(--accent); font-weight:600;">
+                    Feed ›
+                  </button>
+                </div>
+              </div>
+
+              <!-- Scrollable Critical Patient List -->
+              <div class="panel-scroll-body critical-list-body" id="criticalPatientsList" role="region" aria-live="polite">
+                <!-- Injected by renderCriticalPanel() -->
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                  <div class="skeleton-line" style="margin: 8px 0;"></div>
+                  <div class="skeleton-line" style="margin: 8px 0;"></div>
+                </div>
+              </div>
+
+              <!-- Aria-live region for announcing new critical arrivals -->
+              <div id="criticalArrivalAnnouncement" class="sr-only" aria-live="assertive" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);"></div>
+            </section>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 2: ALL PATIENTS TAB (FULL VIEW)
+             ============================================================ -->
+        <div id="recSectionAllPatients" class="dashboard-section hidden">
+          <div class="panel" style="height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <h2 class="panel-title">Hospital Inpatient Directory</h2>
+                <button type="button" class="btn-db primary" onclick="openModal('modalAddPatient')">+ Admit Patient</button>
+              </div>
+            </div>
+            <div class="panel-scroll-body" style="padding: 14px;">
+              <p style="color: var(--text-muted); margin-bottom: 12px;">This tab provides an expanded full-width view of all active patients across hospital wards.</p>
+              <div id="allPatientsFullViewNotice" style="background: var(--surface-2); border: 1px solid var(--border); padding: 12px; border-radius: 6px;">
+                The primary Command Center overview contains the live synchronized directory. You can also manage and search records here.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 3: HOSPITAL-WIDE CRITICAL ALERTS
+             ============================================================ -->
+        <div id="recSectionCriticalAlerts" class="dashboard-section hidden">
+          <div class="panel" style="height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar" style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <h2 class="panel-title">Active Critical Hospital Alerts</h2>
+                  <span id="hospitalAlertsBadge" class="badge-severity CRITICAL font-mono" style="font-size: 10px; padding: 3px 8px;">0 CRITICAL</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <a href="{{ url_for('critical_alerts') }}" class="btn-db" style="text-decoration:none; font-size:11px; display:inline-flex; align-items:center; gap:5px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    View full alerts feed
+                  </a>
+                  <button type="button" class="btn-db" onclick="renderHospitalCriticalAlerts()" style="display:inline-flex; align-items:center; gap:5px; font-size:11px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    Refresh Alerts
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-scroll-body">
+              <table class="medintel-table">
+                <thead>
+                  <tr>
+                    <th>Patient</th>
+                    <th>Specialty</th>
+                    <th>Ward / Location</th>
+                    <th>Bed</th>
+                    <th>Abnormal Vital</th>
+                    <th>Observed Value</th>
+                    <th>Severity</th>
+                    <th>Alert Time</th>
+                    <th>Assigned Doctor</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="hospitalCriticalTableBody">
+                  <tr><td colspan="10" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading hospital-wide critical alerts...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 4: DEDICATED HOSPITAL VOICE ALERTS PANEL
+             ============================================================ -->
+        <div id="recSectionVoiceAlerts" class="dashboard-section hidden">
+          <div class="panel" style="height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <h2 class="panel-title">Hospital Voice Alert Dispatch Console</h2>
+                <div style="display:flex; gap:8px;">
+                  <button type="button" class="btn-db primary" onclick="unlockAudioContextManual()" style="display:inline-flex; align-items:center; gap:5px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+                    Enable Browser Autoplay
+                  </button>
+                  <button type="button" class="btn-db" onclick="toggleVoiceAlerts()">Toggle Audio (Mute / Unmute)</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-scroll-body" style="padding: 14px;">
+              <!-- Voice Queue Status Dashboard Cards -->
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+                <div class="kpi-card">
+                  <div>
+                    <div class="kpi-label">VOICE ENGINE STATE</div>
+                    <div id="voiceEngineStateText" class="kpi-val low-val">ACTIVE</div>
+                    <div class="kpi-sub">Local Piper TTS / System Audio</div>
+                  </div>
+                </div>
+
+                <div class="kpi-card" style="border-left: 3px solid var(--critical);">
+                  <div>
+                    <div class="kpi-label">CURRENTLY SPEAKING</div>
+                    <div id="voiceCurrentSpeakingText" style="font-size: 13px; font-weight: 700; color: #fff; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">None (Listening)</div>
+                    <div id="voiceCurrentSpeakingSub" class="kpi-sub">Queue is idle</div>
+                  </div>
+                </div>
+
+                <div class="kpi-card" style="border-left: 3px solid var(--accent);">
+                  <div>
+                    <div class="kpi-label">QUEUE DEPTH</div>
+                    <div id="voicePendingCountText" class="kpi-val font-mono" style="color:var(--accent);">0 pending</div>
+                    <div class="kpi-sub">Serialized FIFO announcements</div>
+                  </div>
+                </div>
+
+                <div class="kpi-card">
+                  <div>
+                    <div class="kpi-label">LAST SPOKEN ALERT</div>
+                    <div id="voiceLastSpokenText" style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">None</div>
+                    <div id="voiceLastSpokenSub" class="kpi-sub">Session start</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Queue Feed Table -->
+              <h3 style="font-size: 12.5px; font-weight: 800; color: var(--text); margin-bottom: 8px;">Upcoming Announcements Queue (FIFO)</h3>
+              <table class="medintel-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Alert ID</th>
+                    <th>Patient</th>
+                    <th>Ward &amp; Bed</th>
+                    <th>Abnormal Telemetry</th>
+                    <th>Spoken Phrase</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="voiceQueueTableBody">
+                  <tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">No alerts pending in queue.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 5: PATIENT MANAGEMENT & DATABASE ADMISSIONS
+             ============================================================ -->
+        <div id="recSectionPatientManagement" class="dashboard-section hidden">
+          <div class="panel" style="max-width: 960px; height: 100%;">
+            <div class="panel-header-sticky">
+              <h2 class="panel-title">Patient Admissions &amp; Registry Management</h2>
+            </div>
+            <div class="panel-scroll-body" style="padding: 16px;">
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px;">
+                <div class="panel" style="text-align: center; padding: 20px 14px; background: var(--surface-2);">
+                  <div style="display:flex; justify-content:center; margin-bottom: 10px; color: var(--accent);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                  </div>
+                  <h4 style="font-size: 13px; color: var(--text); font-weight: 700;">Admit Patient</h4>
+                  <p style="font-size: 10.5px; color: var(--text-muted); margin: 6px 0 14px;">Create inpatient record with baseline vitals and room assignment.</p>
+                  <button type="button" class="btn-db primary" onclick="openModal('modalAddPatient')" style="width: 100%;">+ New Admission</button>
+                </div>
+
+                <div class="panel" style="text-align: center; padding: 20px 14px; background: var(--surface-2);">
+                  <div style="display:flex; justify-content:center; margin-bottom: 10px; color: var(--info);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  </div>
+                  <h4 style="font-size: 13px; color: var(--text); font-weight: 700;">Edit Record</h4>
+                  <p style="font-size: 10.5px; color: var(--text-muted); margin: 6px 0 14px;">Update patient ward, bed number, or contact details.</p>
+                  <button type="button" class="btn-db" onclick="openModal('modalEditPatient')" style="width: 100%;">Edit Record</button>
+                </div>
+
+                <div class="panel" style="text-align: center; padding: 20px 14px; background: var(--surface-2);">
+                  <div style="display:flex; justify-content:center; margin-bottom: 10px; color: var(--critical);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                  </div>
+                  <h4 style="font-size: 13px; color: var(--critical); font-weight: 700;">Discharge Patient</h4>
+                  <p style="font-size: 10.5px; color: var(--text-muted); margin: 6px 0 14px;">Complete inpatient stay and archive active telemetry.</p>
+                  <button type="button" class="btn-db" onclick="openModal('modalDischargePatient')" style="width: 100%; border-color: rgba(239,68,68,0.4); color: var(--critical);">Discharge Patient</button>
+                </div>
+
+                <div class="panel" style="text-align: center; padding: 20px 14px; background: var(--surface-2);">
+                  <div style="display:flex; justify-content:center; margin-bottom: 10px; color: var(--critical);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </div>
+                  <h4 style="font-size: 13px; color: var(--critical); font-weight: 700;">Delete Record</h4>
+                  <p style="font-size: 10.5px; color: var(--text-muted); margin: 6px 0 14px;">Permanently purge record and vitals from the database.</p>
+                  <button type="button" class="btn-db" onclick="openModal('modalDeletePatient')" style="width: 100%; border-color: rgba(239,68,68,0.4); color: var(--critical);">Delete Record</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 6: DOCTOR ROSTER STATUS (RELOCATED DOCTOR ROSTER)
+             ============================================================ -->
+        <div id="recSectionDoctorStatus" class="dashboard-section hidden">
+          <div class="panel" style="height: 100%;">
+            <div class="panel-header-sticky">
+              <div class="panel-title-bar">
+                <h2 class="panel-title">Active Specialty Physicians &amp; Medical Staff Roster</h2>
+                <span class="status-chip live font-mono">3 ON DUTY</span>
+              </div>
+            </div>
+
+            <div class="panel-scroll-body" style="padding: 16px;">
+              <div class="doctor-roster-grid">
+                <div class="doctor-roster-card">
+                  <div class="doctor-avatar-circle">VP</div>
+                  <div style="flex:1;">
+                    <div style="font-weight: 800; color: var(--text); font-size: 13px;">Dr. Viraj Patil</div>
+                    <div style="color: var(--accent); font-weight: 700; font-size: 11px;">Cardiology Specialist</div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">DOC001 • Cardiology ICU (Ward-A)</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 6px; font-size: 9.5px;">
+                      <span>Ext: <strong class="font-mono">4401</strong></span>
+                      <span style="color: var(--low); font-weight: 700; display:inline-flex; align-items:center; gap:4px;"><span class="status-dot"></span> ACTIVE ON-DUTY</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="doctor-roster-card">
+                  <div class="doctor-avatar-circle" style="background: linear-gradient(135deg, #0d9488, #059669);">SP</div>
+                  <div style="flex:1;">
+                    <div style="font-weight: 800; color: var(--text); font-size: 13px;">Dr. Smarath Pawar</div>
+                    <div style="color: var(--info); font-weight: 700; font-size: 11px;">Pulmonology Specialist</div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">DOC002 • Pulmonology Ward (Ward-B/C)</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 6px; font-size: 9.5px;">
+                      <span>Ext: <strong class="font-mono">4402</strong></span>
+                      <span style="color: var(--low); font-weight: 700; display:inline-flex; align-items:center; gap:4px;"><span class="status-dot"></span> ACTIVE ON-DUTY</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="doctor-roster-card">
+                  <div class="doctor-avatar-circle" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">SS</div>
+                  <div style="flex:1;">
+                    <div style="font-weight: 800; color: var(--text); font-size: 13px;">Dr. Shreya Sutar</div>
+                    <div style="color: var(--scope-hospital); font-weight: 700; font-size: 11px;">General Medicine Specialist</div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">DOC003 • General Medicine / Emergency</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 6px; font-size: 9.5px;">
+                      <span>Ext: <strong class="font-mono">4403</strong></span>
+                      <span style="color: var(--low); font-weight: 700; display:inline-flex; align-items:center; gap:4px;"><span class="status-dot"></span> ACTIVE ON-DUTY</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 7: NOTIFICATIONS & MOBILE DISPATCH
+             ============================================================ -->
+        <div id="recSectionNotifications" class="dashboard-section hidden">
+          <div class="panel" style="max-width: 800px; height: 100%;">
+            <div class="panel-header-sticky">
+              <h2 class="panel-title">Hospital Broadcast &amp; Push Notifications</h2>
+            </div>
+            <div class="panel-scroll-body" style="padding: 16px;">
+              <div style="background: var(--surface-2); padding: 14px; border-radius: 6px; font-size: 11.5px; line-height: 1.8;">
+                <div>Hospital-Wide Emergency Push: <strong style="color:var(--low);">ENABLED</strong></div>
+                <div>FCM On-Call Routing: <strong>Cardiology (DOC001) | Pulmonology (DOC002) | General Medicine (DOC003)</strong></div>
+                <div>Reception Desk FCM Token: <strong class="font-mono" style="color:var(--accent);">REC001_CENTRAL_CONSOLE</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 8: SYSTEM STATUS, PLATFORM HEALTH & DEVELOPER TOOLS
+             ============================================================ -->
+        <div id="recSectionSystemStatus" class="dashboard-section hidden">
+          <div class="panel" style="max-width: 860px; height: 100%;">
+            <div class="panel-header-sticky">
+              <h2 class="panel-title">MedIntel Infrastructure &amp; Platform Health</h2>
+            </div>
+            <div class="panel-scroll-body" style="padding: 16px;">
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                <div class="panel" style="background: var(--surface-2); padding: 12px;">
+                  <div style="font-size: 10px; color: var(--text-faint);">FastAPI Backend</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--low); margin-top: 4px;">OPERATIONAL</div>
+                  <div style="font-size: 9.5px; color: var(--text-muted);">Port 8000 (Proxy 5000)</div>
+                </div>
+                <div class="panel" style="background: var(--surface-2); padding: 12px;">
+                  <div style="font-size: 10px; color: var(--text-faint);">DuckDB Storage</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--low); margin-top: 4px;">CONNECTED</div>
+                  <div style="font-size: 9.5px; color: var(--text-muted);">Deterministic ACID Store</div>
+                </div>
+                <div class="panel" style="background: var(--surface-2); padding: 12px;">
+                  <div style="font-size: 10px; color: var(--text-faint);">Patient Simulator</div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--text);" id="sysSimState">STOPPED</div>
+                  <div style="font-size: 9.5px; color: var(--text-muted);">Authoritative Telemetry Stream</div>
+                </div>
+              </div>
+
+              <!-- Compact "Doctors on duty" block -->
+              <div class="panel" style="background: var(--surface-2); padding: 12px; margin-bottom: 16px;">
+                <h4 style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Doctors on Duty</h4>
+                <div style="display:flex; gap:12px; font-size:11px;">
+                  <div>Dr. Viraj Patil (Cardiology • Ext 4401)</div>
+                  <div>•</div>
+                  <div>Dr. Smarath Pawar (Pulmonology • Ext 4402)</div>
+                  <div>•</div>
+                  <div>Dr. Shreya Sutar (General Medicine • Ext 4403)</div>
+                </div>
+              </div>
+
+              <!-- Collapsed Developer Tools Panel (Moved Simulator Controls) -->
+              <details class="developer-tools-details">
+                <summary style="cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                  </svg>
+                  <span>Developer Tools &amp; Telemetry Controls (Simulator Engine)</span>
+                </summary>
+                <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Simulator Status:</span>
+                    <span id="simStatusBadge" class="status-chip live" style="font-size:10px;">STANDBY</span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Last Cycle Duration:</span>
+                    <span id="lastCycleDuration" class="font-mono" style="color:var(--text); font-weight:700;">0ms</span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Simulator Frequency:</span>
+                    <select id="simIntervalSelect" onchange="changeInterval(this.value)" class="filter-select font-mono" style="padding: 4px 8px;">
+                      <option value="1">1 sec (Fast)</option>
+                      <option value="3" selected>3 sec (Normal)</option>
+                      <option value="5">5 sec (Relaxed)</option>
+                      <option value="10">10 sec (Slow)</option>
+                    </select>
+                  </div>
+                  <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn-action btn-start" id="btnStartSim" onclick="startSimulator()">Start Simulator</button>
+                    <button type="button" class="btn-action btn-stop" id="btnStopSim" onclick="stopSimulator()">Stop Simulator</button>
+                  </div>
+                  <div style="font-size:10px; color:var(--text-faint);">
+                    Note: Running the simulator feeds synthetic vitals through Agent 1 to update patient telemetry in real-time.
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SECTION 9: PROFILE
+             ============================================================ -->
+        <div id="recSectionProfile" class="dashboard-section hidden">
+          <div class="panel" style="max-width: 500px; height: 100%;">
+            <div class="panel-header-sticky">
+              <h2 class="panel-title">Reception Desk Profile</h2>
+            </div>
+            <div class="panel-scroll-body" style="padding: 16px;">
+              <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px;">
+                <div class="user-avatar" style="width:48px; height:48px; font-size:18px;">RD</div>
+                <div>
+                  <h3 style="font-size:15px; font-weight:800; color:var(--text);">Reception Desk</h3>
+                  <div style="font-size:11px; color:var(--low); font-weight:700;">Hospital Admissions Authority</div>
+                  <div style="font-size:10px; color:var(--text-muted);">Staff ID: REC001 • Hospital-Wide Access</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Standardized v2.0.0 Footer (Stage 1 Requirement) -->
+        <footer class="app-footer">
+          MEDINTEL · v2.0.0
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       PATIENT SLIDE-OVER TELEMETRY DRAWER (Preserved Contract IDs)
+       ============================================================ -->
+  <div id="patientDrawer" class="drawer-content" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="patient-id-badge font-mono" id="drawerPid" style="font-size:13px; font-weight:800; color:var(--accent);">--</span>
+          <h2 style="font-size: 15px; font-weight: 800; color: var(--text); margin:0;" id="drawerName">--</h2>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top:2px;" id="drawerDemographics">--</div>
+      </div>
+      <button type="button" onclick="closePatientDrawer()" style="background:none; border:none; color: var(--text-muted); cursor:pointer; display:flex; align-items:center;" aria-label="Close patient drawer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div style="margin-top: 14px; display:flex; flex-direction:column; gap:12px;">
+      <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 11px; color: var(--text);" id="drawerWardRoom">--</div>
+        <div style="font-size: 11px; color: var(--text); margin-top: 4px;">
+          Doctor Assigned: <strong id="drawerDoctor" style="color: var(--accent);">--</strong> (<span id="drawerSpecialty">--</span>)
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 10px; color: var(--text-faint); text-transform: uppercase; font-weight:700; margin-bottom:6px;">Real-Time Physiological Telemetry</h4>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">Heart Rate</div>
+            <div style="font-size: 14px; font-weight: 800; color: var(--text);" class="font-mono" id="drawerHr">--</div>
+          </div>
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">SpO₂</div>
+            <div style="font-size: 14px; font-weight: 800; color: var(--critical);" class="font-mono" id="drawerSpo2">--</div>
+          </div>
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">Temp</div>
+            <div style="font-size: 14px; font-weight: 800; color: var(--critical);" class="font-mono" id="drawerTemp">--</div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px;">
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">Blood Pressure</div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text);" class="font-mono" id="drawerBp">--</div>
+          </div>
+          <div class="panel" style="text-align: center; padding:8px; background:var(--surface-2);">
+            <div style="font-size: 9.5px; color: var(--text-faint);">Respiratory Rate</div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text);" class="font-mono" id="drawerRr">--</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 10px; color: var(--text-faint); text-transform: uppercase; font-weight:700; margin-bottom:6px;">AI Clinical Recommendation &amp; Reasoning</h4>
+        <div style="background: var(--surface-2); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
+          <div style="color: var(--moderate); font-weight: 700; font-size: 11.5px;" id="drawerReason">--</div>
+          <div style="color: var(--info); font-size: 11px; margin-top: 6px; line-height: 1.4;" id="drawerRec">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       PRESERVED ADMISSION & DISCHARGE MODALS (UNCHANGED IDs)
+       ============================================================ -->
+  <div id="modalAddPatient" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:12px;">
+        <h3 style="color:var(--text); font-size:14px; font-weight:700; margin:0;">+ Admit New Patient</h3>
+        <button type="button" onclick="closeModal('modalAddPatient')" style="background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center;" aria-label="Close dialog">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div id="addPatientAlert" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; margin-bottom:10px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:var(--critical);"></div>
+
+      <form onsubmit="handleAddPatient(event)" id="formAddPatient">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label>First Name <span style="color:var(--critical);">*</span></label>
+            <input type="text" id="addFirstName" class="form-control" required placeholder="First Name">
+          </div>
+          <div class="form-group">
+            <label>Last Name <span style="color:var(--critical);">*</span></label>
+            <input type="text" id="addLastName" class="form-control" required placeholder="Last Name">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label>Age <span style="color:var(--critical);">*</span></label>
+            <input type="number" id="addAge" class="form-control font-mono" min="0" max="120" required placeholder="Age (0-120)">
+          </div>
+          <div class="form-group">
+            <label>Gender <span style="color:var(--critical);">*</span></label>
+            <select id="addGender" class="form-control">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label>Ward <span style="color:var(--critical);">*</span></label>
+            <select id="addWard" class="form-control">
+              <option value="ICU">ICU</option>
+              <option value="Cardiology">Cardiology</option>
+              <option value="Pulmonology">Pulmonology</option>
+              <option value="General Medicine">General Medicine</option>
+              <option value="Neurology">Neurology</option>
+              <option value="Pediatrics">Pediatrics</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Blood Group</label>
+            <select id="addBloodGroup" class="form-control">
+              <option value="O+">O+</option>
+              <option value="A+">A+</option>
+              <option value="B+">B+</option>
+              <option value="AB+">AB+</option>
+              <option value="O-">O-</option>
+              <option value="A-">A-</option>
+              <option value="B-">B-</option>
+              <option value="AB-">AB-</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label>Room Number</label>
+            <input type="text" id="addRoomNo" class="form-control font-mono" placeholder="e.g. 201" value="201">
+          </div>
+          <div class="form-group">
+            <label>Bed Number</label>
+            <input type="text" id="addBedNo" class="form-control font-mono" placeholder="e.g. 1" value="1">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:8px;">
+          <label>Assigned Doctor <span style="color:var(--critical);">*</span></label>
+          <select id="addDoctor" class="form-control">
+            <option value="DOC001">Dr. Viraj Patil — Cardiology</option>
+            <option value="DOC002">Dr. Smarath Pawar — Pulmonology</option>
+            <option value="DOC003" selected>Dr. Shreya Sutar — General Medicine</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-top:8px;">
+          <label>Custom Patient ID <span style="color:var(--text-faint);">(Optional, e.g. 201)</span></label>
+          <input type="number" id="addCustomPid" class="form-control font-mono" placeholder="Auto-generated if empty">
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; border-top:1px solid var(--border); padding-top:10px;">
+          <button type="button" class="btn-db" onclick="closeModal('modalAddPatient')">Cancel</button>
+          <button type="submit" class="btn-action btn-start" id="btnAddPatientSubmit">Save Patient</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modalEditPatient" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 520px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          <h3 style="color:var(--text); font-size:14px; font-weight:700; margin:0;">Edit Patient Record</h3>
+        </div>
+        <button type="button" onclick="closeModal('modalEditPatient')" style="background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center;" aria-label="Close dialog">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div id="editPatientAlert" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; margin-bottom:10px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:var(--critical);"></div>
+
+      <form onsubmit="handleEditPatient(event)" id="formEditPatient">
+        <div class="form-group">
+          <label>Select Patient to Edit <span style="color:var(--critical);">*</span></label>
+          <select class="form-control font-mono" id="editPatientSelect" onchange="onEditPatientSelected(this.value)">
+            <option value="">-- Choose Patient --</option>
+          </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label>First Name</label>
+            <input type="text" id="editFirstName" class="form-control" placeholder="First Name">
+          </div>
+          <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" id="editLastName" class="form-control" placeholder="Last Name">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label>Age</label>
+            <input type="number" id="editAge" class="form-control font-mono" min="0" max="120">
+          </div>
+          <div class="form-group">
+            <label>Gender</label>
+            <select id="editGender" class="form-control">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label>Ward</label>
+            <select id="editWard" class="form-control">
+              <option value="ICU">ICU</option>
+              <option value="Cardiology">Cardiology</option>
+              <option value="Pulmonology">Pulmonology</option>
+              <option value="General Medicine">General Medicine</option>
+              <option value="Neurology">Neurology</option>
+              <option value="Pediatrics">Pediatrics</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Blood Group</label>
+            <select id="editBloodGroup" class="form-control">
+              <option value="O+">O+</option>
+              <option value="A+">A+</option>
+              <option value="B+">B+</option>
+              <option value="AB+">AB+</option>
+              <option value="O-">O-</option>
+              <option value="A-">A-</option>
+              <option value="B-">B-</option>
+              <option value="AB-">AB-</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px;">
+          <div class="form-group">
+            <label>Room Number</label>
+            <input type="text" id="editRoomNo" class="form-control font-mono">
+          </div>
+          <div class="form-group">
+            <label>Bed Number</label>
+            <input type="text" id="editBedNo" class="form-control font-mono">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:8px;">
+          <label>Assigned Doctor <span style="color:var(--critical);">*</span></label>
+          <select id="editDoctor" class="form-control">
+            <option value="DOC001">Dr. Viraj Patil — Cardiology</option>
+            <option value="DOC002">Dr. Smarath Pawar — Pulmonology</option>
+            <option value="DOC003">Dr. Shreya Sutar — General Medicine</option>
+          </select>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; border-top:1px solid var(--border); padding-top:10px;">
+          <button type="button" class="btn-db" onclick="closeModal('modalEditPatient')">Cancel</button>
+          <button type="submit" class="btn-action btn-start" id="btnEditPatientSubmit">Update Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dedicated Discharge Modal -->
+  <div id="dischargePatientModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 460px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          <h3 style="color:var(--text); font-size:14px; font-weight:700; margin:0;">Discharge Inpatient</h3>
+        </div>
+        <button type="button" onclick="closeModal('dischargePatientModal'); closeModal('modalDischargePatient');" style="background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center;" aria-label="Close dialog">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div id="dischargePatientAlert" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; margin-bottom:10px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:var(--critical);"></div>
+
+      <form onsubmit="handleDischargePatient(event)" id="dischargePatientForm">
+        <input type="hidden" id="dischargePatientIdInput" value="">
+        <div class="form-group">
+          <label>Patient ID or Name <span style="color:var(--critical);">*</span></label>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="dischargePatientSearchInput" class="form-control font-mono" placeholder="e.g. P101 or Rohan" style="flex:1;" onkeyup="if(event.key==='Enter'){event.preventDefault();searchPatientForDischarge();}">
+            <button type="button" class="btn-action btn-start" onclick="searchPatientForDischarge()" style="padding:4px 10px; font-size:11px; white-space:nowrap;">Find Patient</button>
+          </div>
+        </div>
+
+        <div id="dischargePatientMatchesBox" style="display:none; margin-top:8px;">
+          <label style="font-size:10px; color:var(--moderate); font-weight:700;">Select Patient:</label>
+          <select id="dischargePatientMatchSelect" class="form-control font-mono" onchange="selectMatchPatientForDischarge()"></select>
+        </div>
+
+        <div id="dischargeConfirmBox" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); padding: 12px; border-radius: 8px; margin-top: 10px;">
+          <div style="font-weight: 700; color: var(--text); font-size: 12px;" id="dischargeConfirmTitle">Confirm Patient Discharge</div>
+          <div style="font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 2px;" id="dischargeConfirmPidName">Select a patient above or via patient row</div>
+          <div style="font-size: 10px; color: var(--text-muted);" id="dischargeConfirmWard">--</div>
+          <div style="font-size: 10px; color: var(--critical); margin-top: 6px; font-weight: 600; display:flex; align-items:center; gap:5px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <span>Discharging concludes inpatient care and clears active telemetry monitoring.</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; border-top:1px solid var(--border); padding-top:10px;">
+          <button type="button" class="btn-db" onclick="closeModal('dischargePatientModal'); closeModal('modalDischargePatient');">Cancel</button>
+          <button type="submit" class="btn-action btn-stop" id="btnDischargePatientSubmit" style="background:var(--critical); border-color:var(--critical);">Confirm Discharge</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dedicated Delete Record Modal -->
+  <div id="modalDeletePatient" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 460px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          <h3 style="color:var(--critical); font-size:14px; font-weight:700; margin:0;">Delete Patient Record</h3>
+        </div>
+        <button type="button" onclick="closeModal('modalDeletePatient'); closeModal('deletePatientModal');" style="background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center;" aria-label="Close dialog">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div id="deletePatientAlert" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; margin-bottom:10px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:var(--critical);"></div>
+
+      <form onsubmit="handleDeletePatient(event)" id="formDeletePatient">
+        <div class="form-group">
+          <label>Patient ID or Name <span style="color:var(--critical);">*</span></label>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="deletePatientSearchInput" class="form-control font-mono" placeholder="e.g. P101 or Rohan" style="flex:1;" onkeyup="if(event.key==='Enter'){event.preventDefault();searchPatientForDelete();}">
+            <button type="button" class="btn-action btn-start" onclick="searchPatientForDelete()" style="padding:4px 10px; font-size:11px; white-space:nowrap;">Find Patient</button>
+          </div>
+        </div>
+
+        <div id="deletePatientMatchesBox" style="display:none; margin-top:8px;">
+          <label style="font-size:10px; color:var(--moderate); font-weight:700;">Select Patient:</label>
+          <select id="deletePatientMatchSelect" class="form-control font-mono" onchange="selectMatchPatientForDelete()"></select>
+        </div>
+
+        <div id="deleteConfirmBox" style="display:none; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); padding: 12px; border-radius: 8px; margin-top: 10px;">
+          <div style="font-weight: 700; color: var(--text); font-size: 12px;" id="deleteConfirmTitle">Patient Found — Confirm Deletion</div>
+          <div style="font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 2px;" id="deleteConfirmPidName">P101 — Rohan Deshmukh</div>
+          <div style="font-size: 10px; color: var(--text-muted);" id="deleteConfirmWard">Cardiology • Room 101 • Bed A</div>
+          <div style="font-size: 10px; color: var(--critical); margin-top: 6px; font-weight: 600; display:flex; align-items:center; gap:5px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <span>Confirming deletion will permanently remove this record and all associated vitals from the hospital database.</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px; border-top:1px solid var(--border); padding-top:10px;">
+          <button type="button" class="btn-db" onclick="closeModal('modalDeletePatient'); closeModal('deletePatientModal');">Cancel</button>
+          <button type="submit" class="btn-action btn-stop" id="btnDeletePatientSubmit" disabled style="opacity:0.5; cursor:not-allowed; background:var(--critical); border-color:var(--critical);">Confirm Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script>
+    // -------------------------------------------------------------
+    // Receptionist Hospital Operations Controller
+    // -------------------------------------------------------------
+    const RECEPTIONIST_DESTINATION = 'RECEPTIONIST';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initReceptionistVoiceQueue();
+      initTheme();
+      // Fast polling setup (1.5s interval for live telemetry responsiveness)
+      if (!pollTimer) {
+        pollTimer = setInterval(refreshLiveVitals, 1500);
+      }
+      refreshLiveVitals();
+    });
+
+    // Theme Toggle Controller
+    function initTheme() {
+      const savedTheme = localStorage.getItem('medintel_theme') || localStorage.getItem('medintel-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      updateThemeIcon(savedTheme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('medintel_theme', next);
+      localStorage.setItem('medintel-theme', next);
+      updateThemeIcon(next);
+    }
+
+    function updateThemeIcon(theme) {
+      const sun = document.getElementById('themeIconSun');
+      const moon = document.getElementById('themeIconMoon');
+      if (sun && moon) {
+        if (theme === 'light') {
+          sun.style.display = 'none';
+          moon.style.display = 'block';
+        } else {
+          sun.style.display = 'block';
+          moon.style.display = 'none';
+        }
+      }
+    }
+
+    // System Status Popover Controller
+    function toggleSystemStatusPopover() {
+      const pop = document.getElementById('systemStatusPopover');
+      const btn = document.getElementById('systemStatusChip');
+      if (!pop) return;
+      const isOpen = pop.classList.contains('open');
+      if (isOpen) {
+        pop.classList.remove('open');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      } else {
+        pop.classList.add('open');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    // Close popover when clicking outside
+    document.addEventListener('click', (e) => {
+      const pop = document.getElementById('systemStatusPopover');
+      const btn = document.getElementById('systemStatusChip');
+      if (pop && pop.classList.contains('open')) {
+        if (!pop.contains(e.target) && !btn.contains(e.target)) {
+          pop.classList.remove('open');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+
+    // Navigation Switcher (clean tab swapping, no dead buttons)
+    function switchRecTab(tabName) {
+      const tabs = ['overview', 'allPatients', 'criticalAlerts', 'voiceAlerts', 'patientManagement', 'doctorStatus', 'notifications', 'systemStatus', 'profile'];
+      tabs.forEach(t => {
+        const navEl = document.getElementById('nav' + t.charAt(0).toUpperCase() + t.slice(1));
+        const secEl = document.getElementById('recSection' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (navEl) {
+          if (t === tabName) navEl.classList.add('active');
+          else navEl.classList.remove('active');
+        }
+        if (secEl) {
+          if (t === tabName) secEl.classList.remove('hidden');
+          else secEl.classList.add('hidden');
+        }
+      });
+      if (tabName === 'criticalAlerts') {
+        renderHospitalCriticalAlerts();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Serialized FIFO Hospital Voice Alert Queue Manager
+    // -------------------------------------------------------------
+    let recVoiceQueueInstance = null;
+
+    function initReceptionistVoiceQueue() {
+      recVoiceQueueInstance = new VoiceAlertQueue(RECEPTIONIST_DESTINATION, updateRecVoiceQueueUI);
+      // Fast low-latency voice queue polling every 500ms
+      setInterval(() => {
+        if (recVoiceQueueInstance) recVoiceQueueInstance.poll();
+      }, 500);
+      recVoiceQueueInstance.poll();
+    }
+
+    function updateRecVoiceQueueUI(state) {
+      const barStatus = document.getElementById('recVoiceBarStatus');
+      const badgeStatus = document.getElementById('voiceAlertStatus');
+      const badgeDot = document.getElementById('voiceAlertDot');
+      const speakingBox = document.getElementById('recVoiceSpeakingBox');
+      const speakingDot = document.getElementById('recVoiceSpeakingDot');
+      const speakingLabel = document.getElementById('recVoiceSpeakingLabel');
+      const tagsContainer = document.getElementById('recVoiceQueueTagsContainer');
+      const lastSpokenTag = document.getElementById('recVoiceLastSpokenTag');
+      const btnUnlock = document.getElementById('btnUnlockRecVoiceBar');
+      const mainBar = document.getElementById('recVoiceQueueBar');
+
+      // Detailed Voice Section elements
+      const voiceEngineState = document.getElementById('voiceEngineStateText');
+      const voiceCurrentSpeaking = document.getElementById('voiceCurrentSpeakingText');
+      const voiceCurrentSpeakingSub = document.getElementById('voiceCurrentSpeakingSub');
+      const voicePendingCount = document.getElementById('voicePendingCountText');
+      const voiceLastSpoken = document.getElementById('voiceLastSpokenText');
+      const voiceLastSpokenSub = document.getElementById('voiceLastSpokenSub');
+      const navVoiceBadge = document.getElementById('navVoiceQueueBadge');
+      const voiceTableBody = document.getElementById('voiceQueueTableBody');
+
+      // 1. Status Pill
+      if (barStatus) {
+        barStatus.textContent = state.enabled ? 'ACTIVE' : 'MUTED';
+        barStatus.className = state.enabled ? 'voice-status-active' : 'voice-status-paused';
+      }
+      if (badgeStatus) {
+        badgeStatus.textContent = state.enabled ? 'ACTIVE' : 'MUTED';
+        badgeStatus.style.color = state.enabled ? 'var(--low)' : 'var(--text-muted)';
+      }
+      if (badgeDot) {
+        badgeDot.className = `status-dot ${state.enabled ? '' : 'red'}`;
+      }
+      if (voiceEngineState) {
+        voiceEngineState.textContent = state.enabled ? 'ACTIVE' : 'PAUSED';
+        voiceEngineState.style.color = state.enabled ? 'var(--low)' : 'var(--moderate)';
+      }
+
+      // Show voice bar only when actively speaking or items in queue
+      const isSpeakingOrQueued = state.currentlySpeaking || (state.queued && state.queued.length > 0);
+      if (mainBar) {
+        if (isSpeakingOrQueued) {
+          mainBar.classList.remove('idle-collapsed');
+        } else {
+          mainBar.classList.add('idle-collapsed');
+        }
+      }
+
+      // 2. Currently Speaking
+      if (state.currentlySpeaking) {
+        if (speakingBox) speakingBox.className = 'voice-speaking-box';
+        if (speakingDot) speakingDot.className = 'voice-pulse-dot';
+        if (speakingLabel) {
+          const p = state.currentlySpeaking;
+          const pid = p.patient_id || 'Alert';
+          speakingLabel.innerHTML = `<span style="color:var(--critical); font-weight:700;">SPEAKING:</span> ${pid} ${p.patient_name || ''} (${p.ward || 'Hospital'})`;
+        }
+        if (voiceCurrentSpeaking) {
+          voiceCurrentSpeaking.textContent = `${state.currentlySpeaking.patient_id} — ${state.currentlySpeaking.patient_name || ''}`;
+          voiceCurrentSpeaking.style.color = 'var(--critical)';
+        }
+        if (voiceCurrentSpeakingSub) {
+          voiceCurrentSpeakingSub.textContent = state.currentlySpeaking.spoken_text || 'Announcing to hospital';
+        }
+      } else {
+        if (speakingBox) speakingBox.className = 'voice-speaking-box idle';
+        if (speakingDot) speakingDot.className = 'status-dot';
+        if (speakingLabel) {
+          speakingLabel.textContent = state.enabled ? 'Idle — Monitoring Hospital Admissions' : 'Audio Output Muted';
+        }
+        if (voiceCurrentSpeaking) {
+          voiceCurrentSpeaking.textContent = 'None (Listening)';
+          voiceCurrentSpeaking.style.color = 'var(--text)';
+        }
+        if (voiceCurrentSpeakingSub) {
+          voiceCurrentSpeakingSub.textContent = 'Queue is idle';
+        }
+      }
+
+      // 3. Queued Alerts
+      const pendingCount = state.queued ? state.queued.length : 0;
+      if (navVoiceBadge) navVoiceBadge.textContent = pendingCount;
+      if (voicePendingCount) voicePendingCount.textContent = `${pendingCount} pending`;
+
+      if (tagsContainer) {
+        if (state.queued && state.queued.length > 0) {
+          tagsContainer.innerHTML = state.queued.map(item => `
+            <span class="voice-tag" title="${item.patient_name || ''} - ${item.spoken_text || ''}">
+              ${item.patient_id || item.alert_id}
+            </span>
+          `).join('');
+        } else {
+          tagsContainer.innerHTML = `<span class="voice-tag" style="background: var(--surface); border-color: var(--border); color: var(--text-muted);">None</span>`;
+        }
+      }
+
+      // 4. Last Spoken
+      if (lastSpokenTag) {
+        if (state.lastSpoken) {
+          lastSpokenTag.textContent = state.lastSpoken.patient_id || state.lastSpoken.alert_id;
+          lastSpokenTag.title = state.lastSpoken.spoken_text || '';
+        } else {
+          lastSpokenTag.textContent = 'None';
+        }
+      }
+      if (voiceLastSpoken && state.lastSpoken) {
+        voiceLastSpoken.textContent = `${state.lastSpoken.patient_id} — ${state.lastSpoken.patient_name || ''}`;
+      }
+      if (voiceLastSpokenSub && state.lastSpoken) {
+        voiceLastSpokenSub.textContent = state.lastSpoken.spoken_text || 'Completed announcement';
+      }
+
+      // 5. Unlock Button
+      if (btnUnlock) {
+        btnUnlock.textContent = state.audioUnlocked ? 'Hospital Audio Active' : 'Enable Audio';
+        btnUnlock.style.borderColor = state.audioUnlocked ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)';
+        btnUnlock.style.color = state.audioUnlocked ? 'var(--low)' : 'var(--critical)';
+      }
+
+      // 6. Voice Queue Table
+      if (voiceTableBody) {
+        if (!state.queued || state.queued.length === 0) {
+          voiceTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">No alerts pending in queue.</td></tr>`;
+        } else {
+          voiceTableBody.innerHTML = state.queued.map((item, idx) => `
+            <tr>
+              <td class="font-mono" style="font-weight:700;">#${idx + 1}</td>
+              <td class="font-mono" style="color:var(--accent); font-weight:700;">${item.alert_id}</td>
+              <td style="font-weight:700; color:var(--text);">${item.patient_id} (${item.patient_name || ''})</td>
+              <td>${item.ward || 'Hospital'} • Bed ${item.bed_no || '1'}</td>
+              <td style="color:var(--critical); font-weight:600;">${item.critical_vital || 'Abnormal Telemetry'}: ${item.vital_value || 'Critical'}</td>
+              <td style="font-size:10.5px; color:var(--text-muted); max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.spoken_text}">
+                ${item.spoken_text}
+              </td>
+              <td><span class="badge-severity CRITICAL font-mono" style="font-size:9px;">QUEUED</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+    }
+
+    function toggleVoiceAlerts() {
+      if (recVoiceQueueInstance) {
+        recVoiceQueueInstance.toggle();
+      }
+    }
+
+    function unlockAudioContextManual() {
+      if (recVoiceQueueInstance) {
+        recVoiceQueueInstance.unlockManually();
+        recVoiceQueueInstance.poll();
+      }
+    }
+
+    async function playTestVoice() {
+      if (recVoiceQueueInstance) {
+        recVoiceQueueInstance.unlockManually();
+      }
+      const btn = document.getElementById('btnTestVoice');
+      if (btn) btn.textContent = 'Testing...';
+      try {
+        const res = await fetch('/api/v1/alerts/voice/test');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.voice_alert && data.voice_alert.audio_url) {
+            const aud = new Audio(data.voice_alert.audio_url);
+            await aud.play();
+          }
+        }
+      } catch (e) {
+        console.warn('Test voice playback note:', e);
+      } finally {
+        if (btn) btn.textContent = 'Test Voice';
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Hospital-Wide Critical Alerts Rendering
+    // -------------------------------------------------------------
+    async function renderHospitalCriticalAlerts() {
+      const tbody = document.getElementById('hospitalCriticalTableBody');
+      const badge = document.getElementById('hospitalAlertsBadge');
+      const navBadge = document.getElementById('navCriticalAlertsBadge');
+      if (!tbody) return;
+
+      try {
+        const res = await fetch('/api/v1/alerts/active');
+        if (!res.ok) return;
+        const data = await res.json();
+        const alerts = data.alerts || [];
+
+        if (badge) badge.textContent = `${alerts.length} CRITICAL`;
+        if (navBadge) navBadge.textContent = alerts.length;
+
+        if (alerts.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 24px; color: var(--low);"><span class="status-dot"></span> No active critical alerts hospital-wide. All patients stable.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = alerts.map(a => {
+          const pid = a.patient_id ? (String(a.patient_id).startsWith('P') ? a.patient_id : 'P' + a.patient_id) : '--';
+          const timeStr = a.created_at ? new Date(a.created_at).toLocaleTimeString() : 'Just now';
+          const abnormalVital = a.critical_vital ? a.critical_vital.replace('_', ' ').toUpperCase() : 'TELEMETRY';
+          const vitalVal = a.vital_value || 'Abnormal';
+
+          return `
+            <tr>
+              <td style="font-weight:700; color:var(--text);" class="font-mono">${pid}</td>
+              <td style="color:var(--info); font-weight:600;">${a.specialty || 'General'}</td>
+              <td>${a.ward || 'Hospital'} (R:${a.room_no})</td>
+              <td class="font-mono">${a.bed_no}</td>
+              <td style="color:var(--critical); font-weight:600;">${abnormalVital}</td>
+              <td class="font-mono" style="font-weight:700; color:var(--critical);">${vitalVal}</td>
+              <td><span class="badge-severity CRITICAL font-mono">${a.severity}</span></td>
+              <td class="font-mono" style="font-size:10px;">${timeStr}</td>
+              <td style="font-weight:600;">${a.assigned_doctor || 'On-Call Specialist'}</td>
+              <td><span style="font-size:10px; color:var(--critical); font-weight:700;">ACTIVE</span></td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.warn('Error fetching hospital critical alerts:', err);
+      }
+    }
+
+    function populateEditPatientModal() {
+      const select = document.getElementById('editPatientSelect');
+      if (!select) return;
+      const alertEl = document.getElementById('editPatientAlert');
+      if (alertEl) alertEl.style.display = 'none';
+
+      select.innerHTML = '<option value="">-- Choose Patient to Edit --</option>' +
+        (allPatients || []).map(p => `<option value="${p.patient_id}">${p.patient_id} — ${p.name} (${p.ward} • R:${p.room_no} B:${p.bed_no})</option>`).join('');
+
+      ['editFirstName', 'editLastName', 'editAge', 'editRoomNo', 'editBedNo'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const docEl = document.getElementById('editDoctor');
+      if (docEl) docEl.value = 'DOC003';
+    }
+
+    function onEditPatientSelected(pid) {
+      if (!pid) return;
+      const p = (allPatients || []).find(x => x.patient_id === pid);
+      if (!p) return;
+
+      const nameParts = (p.name || '').trim().split(' ');
+      const fName = p.first_name || nameParts[0] || '';
+      const lName = p.last_name || nameParts.slice(1).join(' ') || '';
+
+      const fnEl = document.getElementById('editFirstName');
+      if (fnEl) fnEl.value = fName;
+      const lnEl = document.getElementById('editLastName');
+      if (lnEl) lnEl.value = lName;
+      const ageEl = document.getElementById('editAge');
+      if (ageEl) ageEl.value = p.age || 45;
+      const gEl = document.getElementById('editGender');
+      if (gEl) gEl.value = p.gender || 'Male';
+      const wEl = document.getElementById('editWard');
+      if (wEl) wEl.value = p.ward || 'General Medicine';
+      const bgEl = document.getElementById('editBloodGroup');
+      if (bgEl) bgEl.value = p.blood_group || 'O+';
+      const rmEl = document.getElementById('editRoomNo');
+      if (rmEl) rmEl.value = p.room_no || '201';
+      const bdEl = document.getElementById('editBedNo');
+      if (bdEl) bdEl.value = p.bed_no || '1';
+      const docEl = document.getElementById('editDoctor');
+      if (docEl) {
+        docEl.value = p.assigned_doctor_id || (p.specialty === 'CARDIOLOGY' ? 'DOC001' : (p.specialty === 'PULMONOLOGY' ? 'DOC002' : 'DOC003'));
+      }
+    }
+  </script>
+</body>
+</html>
