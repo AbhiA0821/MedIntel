@@ -300,6 +300,42 @@ class TestGoogleOAuthAndAuthorization(unittest.TestCase):
             self.assertEqual(params_sent.get('doctor_id'), 'DOC001', "Proxy must override tampered doctor_id")
             self.assertEqual(params_sent.get('specialty'), 'CARDIOLOGY', "Proxy must override tampered specialty")
 
+    def test_17_proxy_excludes_accept_encoding_and_content_length(self):
+        # User is logged in as Dr. Smarath (DOC002, PULMONOLOGY)
+        with self.flask_client.session_transaction() as sess:
+            sess['role'] = 'DOCTOR'
+            sess['user'] = {
+                'doctor_id': 'DOC002',
+                'doctor_name': 'Dr. Smarath Pawar',
+                'specialty': 'PULMONOLOGY',
+                'role': 'DOCTOR'
+            }
+
+        with patch('requests.request') as mock_proxy_req:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.content = b'{"status": "SUCCESS", "patients": []}'
+            mock_resp.raw.headers.items.return_value = [('Content-Type', 'application/json')]
+            mock_proxy_req.return_value = mock_resp
+
+            # Client browser sends Accept-Encoding and Content-Length
+            headers = {
+                'Accept-Encoding': 'gzip, deflate, br, zstd',
+                'Content-Length': '0',
+                'User-Agent': 'TestBrowser/1.0'
+            }
+            resp = self.flask_client.get('/api/v1/live_vitals', headers=headers)
+
+            self.assertEqual(resp.status_code, 200)
+            call_args = mock_proxy_req.call_args
+            upstream_headers = call_args[1].get('headers', {})
+            upstream_lower = {k.lower(): v for k, v in upstream_headers.items()}
+
+            self.assertNotIn('accept-encoding', upstream_lower, "Proxy must exclude accept-encoding so requests auto-decompresses")
+            self.assertNotIn('content-length', upstream_lower, "Proxy must exclude content-length")
+            self.assertNotIn('host', upstream_lower, "Proxy must exclude host")
+            self.assertIn('user-agent', upstream_lower, "Proxy should preserve standard client headers")
+
     # -------------------------------------------------------------
     # 6. Backend Direct Authorization Endpoint
     # -------------------------------------------------------------

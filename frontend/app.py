@@ -301,10 +301,15 @@ def proxy_fastapi(subpath):
                 if 'alerts/voice' in clean_subpath:
                     params['destination'] = 'RECEPTIONIST'
 
+        # Strip hop-by-hop and client transport encoding headers before forwarding
+        # (Must exclude 'accept-encoding' so requests automatically decompresses gzip/br before Flask returns Response)
+        forward_exclude = {'host', 'accept-encoding', 'content-length'}
+        upstream_headers = {k: v for k, v in request.headers if k.lower() not in forward_exclude}
+
         resp = requests.request(
             method=request.method,
             url=target_url,
-            headers={k: v for k, v in request.headers if k.lower() != 'host'},
+            headers=upstream_headers,
             data=request.get_data(),
             params=params,
             cookies=request.cookies,
@@ -314,6 +319,7 @@ def proxy_fastapi(subpath):
         headers = [(k, v) for k, v in resp.raw.headers.items() if k.lower() not in excluded_headers]
         return Response(resp.content, resp.status_code, headers)
     except Exception as e:
+        app.logger.error(f"[PROXY ERROR] Failed forwarding to {target_url}: {e}")
         return jsonify({"status": "error", "message": f"FastAPI backend connection error: {str(e)}"}), 502
 
 

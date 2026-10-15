@@ -802,7 +802,22 @@
           fetch('/api/v1/alerts/active').catch(() => null)
         ]);
 
-        if (!vitalsRes.ok) return;
+        if (!vitalsRes.ok) {
+          console.error(`[MONITOR] Vitals fetch failed with status ${vitalsRes.status}: ${vitalsRes.statusText}`);
+          if (!allPatients || allPatients.length === 0) {
+            const tbody = document.getElementById('patientTableBody');
+            if (tbody) {
+              tbody.innerHTML = `
+                <tr>
+                  <td colspan="9" style="text-align: center; padding: 40px; color: var(--critical);">
+                    Telemetry connection delayed (HTTP ${vitalsRes.status}). Retrying live stream...
+                  </td>
+                </tr>
+              `;
+            }
+          }
+          return;
+        }
         const data = await vitalsRes.json();
         allPatients = data.patients || [];
 
@@ -840,6 +855,18 @@
         renderDoctorDashboardViews();
       } catch (err) {
         console.error('[MONITOR] Refresh error:', err);
+        if (!allPatients || allPatients.length === 0) {
+          const tbody = document.getElementById('patientTableBody');
+          if (tbody) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="9" style="text-align: center; padding: 40px; color: var(--critical);">
+                  Telemetry stream error: ${escapeHtml(err.message || 'Stream interrupted')}. Retrying...
+                </td>
+              </tr>
+            `;
+          }
+        }
       } finally {
         isDoctorMonitoringRefreshing = false;
       }
