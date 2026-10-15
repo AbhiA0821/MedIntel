@@ -58,32 +58,50 @@ INITIAL_VITALS = [
 ]
 
 
-def seed_demo_population():
+def _seed_authorized_doctors(con):
+    """Upserts authoritative doctors without altering patient records."""
+    print("Verifying Authoritative Doctors...", flush=True)
+    for doc in DEMO_DOCTORS:
+        doc_id, name, email, fb_uid, specialty, role, active = doc
+        exists = con.execute("SELECT 1 FROM AuthorizedDoctors WHERE doctor_id = ?", [doc_id]).fetchone()
+        if exists:
+            con.execute("""
+                UPDATE AuthorizedDoctors
+                SET doctor_name = ?, email = ?, specialty = ?, role = ?, active = ?
+                WHERE doctor_id = ?;
+            """, [name, email, specialty, role, active, doc_id])
+        else:
+            con.execute("""
+                INSERT INTO AuthorizedDoctors (doctor_id, doctor_name, email, firebase_uid, specialty, role, active, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+            """, [doc_id, name, email, fb_uid, specialty, role, active, datetime.now()])
+
+
+def seed_demo_population(force: bool = False):
     con = duckdb.connect(str(DB_PATH))
     try:
         print("Ensuring schema integrity...")
+        # Check if tables exist
+        tables = [t[0] for t in con.execute("SHOW TABLES").fetchall()]
+        if "Patients" not in tables:
+            from database.setup_database import init_database
+            init_database(DB_PATH)
+
         # Check Patients schema and add specialty column if missing
         cols = [c[1] for c in con.execute("PRAGMA table_info('Patients');").fetchall()]
         if "specialty" not in cols:
             con.execute("ALTER TABLE Patients ADD COLUMN specialty VARCHAR;")
             print("Added 'specialty' column to Patients table.")
 
+        # Check if already populated
+        existing_patients = con.execute("SELECT COUNT(*) FROM Patients").fetchone()[0]
+        if existing_patients > 0 and not force:
+            print(f"[SEED] Database already populated with {existing_patients} patients. Preserving existing clinical records.")
+            _seed_authorized_doctors(con)
+            return
+
         # Seed AuthorizedDoctors
-        print("Seeding Authoritative Doctors...", flush=True)
-        for doc in DEMO_DOCTORS:
-            doc_id, name, email, fb_uid, specialty, role, active = doc
-            exists = con.execute("SELECT 1 FROM AuthorizedDoctors WHERE doctor_id = ?", [doc_id]).fetchone()
-            if exists:
-                con.execute("""
-                    UPDATE AuthorizedDoctors
-                    SET doctor_name = ?, email = ?, specialty = ?, role = ?, active = ?
-                    WHERE doctor_id = ?;
-                """, [name, email, specialty, role, active, doc_id])
-            else:
-                con.execute("""
-                    INSERT INTO AuthorizedDoctors (doctor_id, doctor_name, email, firebase_uid, specialty, role, active, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-                """, [doc_id, name, email, fb_uid, specialty, role, active, datetime.now()])
+        _seed_authorized_doctors(con)
 
         # Clear old patient records and seed exactly 11 demo patients
         print("Seeding 11 Controlled Demo Patients...")
@@ -127,4 +145,5 @@ def seed_demo_population():
 
 
 if __name__ == "__main__":
-    seed_demo_population()
+    force_seed = "--force" in sys.argv
+    seed_demo_population(force=force_seed)

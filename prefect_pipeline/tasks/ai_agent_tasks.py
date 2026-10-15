@@ -3,8 +3,13 @@ import duckdb
 from pathlib import Path
 from typing import Dict, List, Any
 
+import sys
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DB_PATH = PROJECT_ROOT / "database" / "medintel.duckdb"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from database.connection import DB_PATH
 
 # ==============================================================================
 # AGENT 1: PATIENT ANALYSIS AGENT

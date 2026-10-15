@@ -35,11 +35,26 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(hours=8)
 )
 
+# Configure trusted proxy headers for Render HTTPS termination
+if is_production:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', 'http://127.0.0.1:8000')
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://127.0.0.1:5000/auth/google/callback')
+
+
+@app.route('/health')
+def health():
+    """Health check endpoint for Render monitoring and deployment verification."""
+    return jsonify({
+        "status": "healthy",
+        "service": "MedIntel Flask Frontend",
+        "backend_url": FASTAPI_BASE_URL
+    }), 200
 
 
 @app.route('/')

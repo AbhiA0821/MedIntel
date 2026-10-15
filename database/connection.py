@@ -32,10 +32,15 @@ _shared_connection = None
 class ProcessSharedDuckDBConnection:
     """Thread-safe process-level shared DuckDB connection wrapper."""
     def __init__(self, db_path, read_only=False):
+        p = Path(db_path)
         try:
-            self._raw_con = duckdb.connect(str(db_path), read_only=read_only)
+            p.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        try:
+            self._raw_con = duckdb.connect(str(p), read_only=read_only)
         except duckdb.IOException:
-            self._raw_con = duckdb.connect(str(db_path), read_only=True)
+            self._raw_con = duckdb.connect(str(p), read_only=True)
         self._lock = threading.Lock()
 
     def execute(self, query, params=None):

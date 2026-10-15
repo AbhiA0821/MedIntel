@@ -52,7 +52,7 @@ _simulator_lock = threading.Lock()
 
 
 def _background_simulator_worker():
-    global _simulator_running, _simulator_status
+    global _simulator_running, _simulator_status, _simulator_thread
     print("[SIMULATOR MANAGER] Background simulator thread started.", flush=True)
     con = get_connection()
     try:
@@ -81,21 +81,108 @@ def _background_simulator_worker():
     finally:
         _simulator_running = False
         _simulator_status = "STOPPED"
+        _simulator_thread = None
         update_pipeline_status_metrics(status="STOPPED", cycle_duration=0.0, con=con)
         con.close()
         print("[SIMULATOR MANAGER] Background simulator thread stopped.", flush=True)
 
 
+def _start_simulator_worker():
+    """Starts exactly ONE simulator background thread if stopped."""
+    global _simulator_thread, _simulator_running, _simulator_status
+    with _simulator_lock:
+        if _simulator_running or (_simulator_thread is not None and _simulator_thread.is_alive()):
+            return False, "Simulator is already running."
+        _simulator_stop_event.clear()
+        _simulator_running = True
+        _simulator_status = "RUNNING"
+        _simulator_thread = threading.Thread(target=_background_simulator_worker, daemon=True)
+        _simulator_thread.start()
+        return True, "Simulator started successfully."
+
+
+def _stop_simulator_worker():
+    """Stops the running simulator cleanly."""
+    global _simulator_thread, _simulator_running, _simulator_status
+    with _simulator_lock:
+        if not _simulator_running and (_simulator_thread is None or not _simulator_thread.is_alive()):
+            _simulator_status = "STOPPED"
+            _simulator_thread = None
+            update_pipeline_status_metrics(status="STOPPED", cycle_duration=0.0)
+            return False, "Simulator is already stopped."
+        _simulator_stop_event.set()
+        if _simulator_thread is not None:
+            _simulator_thread.join(timeout=6.0)
+            _simulator_thread = None
+        _simulator_running = False
+        _simulator_status = "STOPPED"
+        update_pipeline_status_metrics(status="STOPPED", cycle_duration=0.0)
+        return True, "Simulator stopped successfully."
+
+
 @app.on_event("startup")
 def on_startup():
-    """Ensure initial simulator state is strictly STOPPED."""
+    """Verify database readiness and start background patient telemetry if configured."""
     global _simulator_running, _simulator_status
-    _simulator_running = False
-    _simulator_status = "STOPPED"
+
+    # 1. Database readiness verification and safe initialization
     try:
-        update_pipeline_status_metrics(status="STOPPED", cycle_duration=0.0)
-    except Exception:
-        pass
+        from database.connection import get_connection, get_db_path
+        from database.setup_database import init_database
+        from scripts.seed_demo_population import seed_demo_population
+        from scripts.seed_oauth_users import sync_users
+
+        current_db_path = get_db_path()
+        if not current_db_path.exists():
+            print(f"[STARTUP] Database file {current_db_path} does not exist. Initializing schema...", flush=True)
+            init_database(current_db_path)
+            seed_demo_population(force=False)
+            sync_users()
+
+        con = get_connection()
+        tables = [t[0] for t in con.execute("SHOW TABLES").fetchall()]
+        required_tables = {"Patients", "VitalSigns", "AlertHistory", "AuthorizedDoctors"}
+        if not required_tables.issubset(set(tables)):
+            print("[STARTUP] Required tables missing. Initializing schema...", flush=True)
+            init_database(current_db_path)
+            seed_demo_population(force=False)
+            sync_users()
+        else:
+            p_count = con.execute("SELECT COUNT(*) FROM Patients").fetchone()[0]
+            if p_count == 0:
+                print("[STARTUP] Database schema exists but Patients table is empty. Seeding initial population...", flush=True)
+                seed_demo_population(force=False)
+                sync_users()
+    except Exception as e:
+        print(f"[STARTUP CRITICAL] Database initialization failed: {e}", flush=True)
+        raise RuntimeError(f"Database readiness verification failed on startup: {e}") from e
+
+    # 2. Configurable Auto-Start Simulator
+    auto_start = os.getenv("AUTO_START_SIMULATOR", "false").lower() in ("true", "1", "yes")
+    standalone_runner = os.getenv("MEDINTEL_STANDALONE_SIMULATOR", "false").lower() in ("true", "1", "yes")
+
+    if auto_start and not standalone_runner:
+        started, msg = _start_simulator_worker()
+        print(f"[STARTUP] In-process simulator auto-start: {msg}", flush=True)
+    else:
+        _simulator_running = False
+        _simulator_status = "STOPPED"
+        try:
+            update_pipeline_status_metrics(status="STOPPED", cycle_duration=0.0)
+        except Exception:
+            pass
+        if standalone_runner:
+            print("[STARTUP] In-process simulator auto-start bypassed (managed by standalone runner).", flush=True)
+        else:
+            print("[STARTUP] In-process simulator auto-start disabled (AUTO_START_SIMULATOR!=true).", flush=True)
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    """Graceful simulator shutdown on server termination."""
+    _stop_simulator_worker()
+    print("[SHUTDOWN] MedIntel background workers terminated cleanly.", flush=True)
+
 
 
 class IntervalUpdateRequest(BaseModel):
@@ -427,53 +514,22 @@ def get_simulator_status_endpoint():
 @app.post("/api/v1/simulator/start")
 def start_simulator_endpoint():
     """Starts exactly ONE simulator process/thread if stopped."""
-    global _simulator_thread, _simulator_running, _simulator_status
-    with _simulator_lock:
-        if _simulator_running or (_simulator_thread is not None and _simulator_thread.is_alive()):
-            return {
-                "status": "RUNNING",
-                "message": "Simulator is already running.",
-                "pid": os.getpid()
-            }
-
-        _simulator_stop_event.clear()
-        _simulator_running = True
-        _simulator_status = "RUNNING"
-        _simulator_thread = threading.Thread(target=_background_simulator_worker, daemon=True)
-        _simulator_thread.start()
-
-        return {
-            "status": "RUNNING",
-            "message": "Simulator started successfully.",
-            "pid": os.getpid()
-        }
+    started, message = _start_simulator_worker()
+    return {
+        "status": "RUNNING",
+        "message": message,
+        "pid": os.getpid()
+    }
 
 
 @app.post("/api/v1/simulator/stop")
 def stop_simulator_endpoint():
     """Stops the running simulator cleanly."""
-    global _simulator_thread, _simulator_running, _simulator_status
-    with _simulator_lock:
-        if not _simulator_running and (_simulator_thread is None or not _simulator_thread.is_alive()):
-            _simulator_status = "STOPPED"
-            update_pipeline_status_metrics(status="STOPPED", cycle_duration=0.0)
-            return {
-                "status": "STOPPED",
-                "message": "Simulator is already stopped."
-            }
-
-        _simulator_stop_event.set()
-        if _simulator_thread is not None:
-            _simulator_thread.join(timeout=3.0)
-
-        _simulator_running = False
-        _simulator_status = "STOPPED"
-        update_pipeline_status_metrics(status="STOPPED", cycle_duration=0.0)
-
-        return {
-            "status": "STOPPED",
-            "message": "Simulator stopped successfully."
-        }
+    stopped, message = _stop_simulator_worker()
+    return {
+        "status": "STOPPED",
+        "message": message
+    }
 
 
 @app.get("/api/v1/hospital/summary")

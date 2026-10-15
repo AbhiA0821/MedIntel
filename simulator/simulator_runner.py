@@ -56,6 +56,11 @@ def start_in_process_api_server(host=None, port=None):
 
     import threading
     import uvicorn
+
+    # Ensure in-process FastAPI startup does not spawn a second concurrent simulator thread
+    os.environ["MEDINTEL_STANDALONE_SIMULATOR"] = "true"
+    os.environ["AUTO_START_SIMULATOR"] = "false"
+
     from backend.main import app
 
     if host is None:
